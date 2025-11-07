@@ -1,0 +1,77 @@
+<div class="inventory">
+  <section class="inventory__form">
+    <h2>Inventario</h2>
+    <p>Gestiona insumos y existencias de manera centralizada.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="name">Nombre del ítem</label>
+        <input id="name" type="text" formControlName="name" placeholder="Ej. Fertilizante orgánico A">
+        <small *ngIf="form.controls.name.invalid && (form.controls.name.dirty || form.controls.name.touched)">
+          Ingresa el nombre del ítem
+        </small>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="quantity">Cantidad</label>
+          <input id="quantity" type="text" formControlName="quantity" placeholder="Ej. 18">
+          <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
+            Ingresa un número válido (máx. 2 decimales)
+          </small>
+        </div>
+        <div class="field">
+          <label for="unit">Unidad</label>
+          <input id="unit" type="text" formControlName="unit" placeholder="kg, lt, etc.">
+          <small *ngIf="form.controls.unit.invalid && (form.controls.unit.dirty || form.controls.unit.touched)">
+            Ingresa la unidad
+          </small>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="category">Categoría</label>
+        <select id="category" formControlName="category">
+          <option *ngFor="let option of categories" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </div>
+
+      <button type="submit" class="cta">
+        <span class="material-symbols-outlined">add_box</span>
+        <span>Agregar al inventario</span>
+      </button>
+    </form>
+  </section>
+
+  <section class="inventory__list">
+    <div class="list__header">
+      <h3>Existencias</h3>
+      <p>Actualiza las cantidades conforme recibas o utilices insumos.</p>
+    </div>
+
+    <ng-container *ngIf="inventory$ | async as items">
+      <article class="empty" *ngIf="!items.length">
+        <span class="material-symbols-outlined">inventory_2</span>
+        <h4>No hay insumos registrados</h4>
+        <p>Agrega los materiales para mantener el control de stock y reposiciones.</p>
+      </article>
+
+      <ul *ngIf="items.length" class="list">
+        <li *ngFor="let item of items; trackBy: trackById" [class.critical]="item.quantity <= 10">
+          <div class="list__icon">
+            <span class="material-symbols-outlined">inventory</span>
+          </div>
+          <div class="list__content">
+            <strong>{{ item.name }}</strong>
+            <span>{{ item.quantity | number:'1.0-0' }} {{ item.unit }}</span>
+            <small>Categoría: {{ item.category }}</small>
+          </div>
+          <button type="button" class="list__action" (click)="adjustQuantity(item)">
+            <span class="material-symbols-outlined">edit</span>
+            <span>Ajustar</span>
+          </button>
+        </li>
+      </ul>
+    </ng-container>
+  </section>
+</div>

@@ -1,0 +1,48 @@
+# Global ignores
+*.log
+*.swp
+*.tmp
+.DS_Store
+.history
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code (descomenta si quieres compartir configuraciones)
+# .vscode/
+
+# Node / Angular
+node_modules/
+angular/node_modules/
+angular/dist/
+angular/.angular/
+angular/out-tsc/
+out-tsc/
+angular/.eslintcache
+angular/npm-debug.log*
+angular/yarn-error.log*
+
+# Environment files
+*.env
+*.env.*
+
+# Test & coverage outputs
+coverage/
+angular/coverage/
+
+# Legacy Flutter artifacts (mantener excluidos por si persisten)
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+/build/
+
+# Android / iOS build outputs
+/android/app/debug
+/android/app/profile
+/android/app/release
+**/Pods/
+*.xcworkspace

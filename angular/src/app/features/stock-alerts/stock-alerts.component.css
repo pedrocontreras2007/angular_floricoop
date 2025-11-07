@@ -1,0 +1,141 @@
+.alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.alerts__header h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.alerts__header p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+}
+
+.alerts__summary .summary-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+}
+
+.alerts__summary .material-symbols-outlined {
+  font-size: 2.5rem;
+  color: #d32f2f;
+}
+
+.alerts__summary h3 {
+  margin: 0;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.alerts__summary p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+}
+
+.alerts__list h3 {
+  margin: 0 0 1rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.alerts__list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.alerts__list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1.3rem 1.5rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, rgba(21, 101, 192, 0.08), rgba(46, 125, 50, 0.08));
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+}
+
+.alerts__list li.critical {
+  background: linear-gradient(135deg, rgba(211, 47, 47, 0.08), rgba(255, 152, 0, 0.1));
+}
+
+.item__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 1.1rem;
+  display: grid;
+  place-items: center;
+  color: #1565c0;
+  background: rgba(21, 101, 192, 0.18);
+}
+
+.item__icon.critical {
+  color: #d32f2f;
+  background: rgba(211, 47, 47, 0.18);
+}
+
+.item__body strong {
+  font-size: 1.05rem;
+}
+
+.item__body span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #475569;
+}
+
+.item__body small {
+  color: #94a3b8;
+}
+
+.badge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge__critical {
+  background: rgba(211, 47, 47, 0.16);
+  color: #b71c1c;
+}
+
+.badge__safe {
+  background: rgba(46, 125, 50, 0.16);
+  color: #1b5e20;
+}
+
+.empty {
+  padding: 2rem;
+  border-radius: 1.5rem;
+  background: rgba(21, 101, 192, 0.08);
+  text-align: center;
+  color: #0f172a;
+}
+
+.empty .material-symbols-outlined {
+  font-size: 2.75rem;
+  color: #1565c0;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .alerts__list li {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,105 @@
+<div class="reports">
+  <header>
+    <h2>Reportes</h2>
+    <p>Visualiza la salud del inventario con métricas clave.</p>
+  </header>
+
+  <ng-container *ngIf="vm$ | async as vm">
+    <section class="metrics">
+      <article class="metric-card primary">
+        <span class="material-symbols-outlined">inventory_2</span>
+        <div>
+          <h3>Stock total</h3>
+          <p>{{ vm.totalStock | number:'1.0-0' }} unidades</p>
+          <small>Suma de todas las existencias registradas</small>
+        </div>
+      </article>
+      <article class="metric-card info">
+        <span class="material-symbols-outlined">group_work</span>
+        <div>
+          <h3>Ítems activos</h3>
+          <p>{{ vm.items.length }}</p>
+          <small>Productos con seguimiento de stock</small>
+        </div>
+      </article>
+      <article class="metric-card success">
+        <span class="material-symbols-outlined">health_and_safety</span>
+        <div>
+          <h3>Stock saludable</h3>
+          <p>{{ vm.healthyCount }}</p>
+          <small>Inventario por encima de 10 unidades</small>
+        </div>
+      </article>
+      <article class="metric-card warning">
+        <span class="material-symbols-outlined">warning</span>
+        <div>
+          <h3>Alertas críticas</h3>
+          <p>{{ vm.criticalItems.length }}</p>
+          <small>Productos que requieren reposición</small>
+        </div>
+      </article>
+    </section>
+
+    <section class="categories">
+      <h3>Distribución por categoría</h3>
+      <article class="empty" *ngIf="(vm.items.length === 0)">
+        <span class="material-symbols-outlined">workspaces</span>
+        <p>Aún no hay categorías registradas. Agrega productos al inventario.</p>
+      </article>
+      <div class="chips" *ngIf="vm.items.length">
+        <div class="chip" *ngFor="let entry of vm.categoryTotals | keyvalue">
+          <span class="chip__label">{{ entry.key }}</span>
+          <span class="chip__value">{{ entry.value | number:'1.0-0' }} unidades</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="critical">
+      <h3>Detalle de stock crítico</h3>
+      <article class="empty" *ngIf="!vm.criticalItems.length">
+        <span class="material-symbols-outlined">verified</span>
+        <p>Todo el inventario se encuentra en niveles seguros.</p>
+      </article>
+      <ul *ngIf="vm.criticalItems.length">
+        <li *ngFor="let item of vm.criticalItems">
+          <div class="item__icon">
+            <span class="material-symbols-outlined">inventory</span>
+          </div>
+          <div>
+            <strong>{{ item.name }}</strong>
+            <span>Quedan {{ item.quantity | number:'1.0-0' }} {{ item.unit }}</span>
+            <small>Categoría: {{ item.category }}</small>
+          </div>
+          <span class="badge">Reposición</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="summary">
+      <h3>Resumen de existencias</h3>
+      <article class="summary-card">
+        <div class="summary-row">
+          <span class="material-symbols-outlined">trending_up</span>
+          <div>
+            <strong>Mayor stock</strong>
+            <span>{{ vm.highestStock ? vm.highestStock.name + ' (' + (vm.highestStock.quantity | number:'1.0-0') + ' ' + vm.highestStock.unit + ')' : 'Sin datos' }}</span>
+          </div>
+        </div>
+        <div class="summary-row">
+          <span class="material-symbols-outlined">trending_down</span>
+          <div>
+            <strong>Menor stock</strong>
+            <span>{{ vm.lowestStock ? vm.lowestStock.name + ' (' + (vm.lowestStock.quantity | number:'1.0-0') + ' ' + vm.lowestStock.unit + ')' : 'Sin datos' }}</span>
+          </div>
+        </div>
+        <div class="summary-row">
+          <span class="material-symbols-outlined">scale</span>
+          <div>
+            <strong>Stock promedio</strong>
+            <span>{{ vm.averageStock | number:'1.0-0' }} unidades por producto</span>
+          </div>
+        </div>
+      </article>
+    </section>
+  </ng-container>
+</div>

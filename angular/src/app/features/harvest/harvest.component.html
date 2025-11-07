@@ -1,0 +1,76 @@
+<div class="harvest">
+  <section class="harvest__form">
+    <h2>Registro de cosechas</h2>
+    <p>Ingresa nuevas entradas para mantener actualizado el historial de la cooperativa.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="crop">Cultivo</label>
+        <input id="crop" type="text" formControlName="crop" placeholder="Ej. Café Arábica">
+        <small *ngIf="form.controls.crop.invalid && (form.controls.crop.dirty || form.controls.crop.touched)">
+          Ingresa el nombre del cultivo
+        </small>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="quantity">Cantidad (toneladas)</label>
+          <input id="quantity" type="text" formControlName="quantity" placeholder="Ej. 12.5">
+          <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
+            Usa un número válido y positivo (máx. 2 decimales)
+          </small>
+        </div>
+        <div class="field">
+          <label for="category">Clasificación</label>
+          <select id="category" formControlName="category">
+            <option *ngFor="let option of categories" [value]="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="partner">Socio productor</label>
+        <input id="partner" type="text" formControlName="partner" placeholder="Ej. Coop Andina">
+        <small *ngIf="form.controls.partner.invalid && (form.controls.partner.dirty || form.controls.partner.touched)">
+          Ingresa el nombre del socio
+        </small>
+      </div>
+
+      <button type="submit" [disabled]="submitting" class="cta">
+        <span class="material-symbols-outlined">add_circle</span>
+        <span>{{ submitting ? 'Guardando...' : 'Guardar cosecha' }}</span>
+      </button>
+    </form>
+  </section>
+
+  <section class="harvest__history">
+    <div class="history__header">
+      <h3>Historial reciente</h3>
+      <p>Las entradas más recientes aparecen primero.</p>
+    </div>
+
+    <ng-container *ngIf="harvests$ | async as harvests">
+      <article class="empty" *ngIf="!harvests.length">
+        <span class="material-symbols-outlined">grass</span>
+        <h4>Aún no hay cosechas registradas</h4>
+        <p>Agrega tu primera entrada para comenzar a visualizar el desempeño de la cooperativa.</p>
+      </article>
+      <ul *ngIf="harvests.length" class="history__list">
+        <li *ngFor="let harvest of harvests; trackBy: trackHarvest">
+          <div class="history__icon">
+            <span class="material-symbols-outlined">spa</span>
+          </div>
+          <div class="history__content">
+            <strong>{{ harvest.crop }}</strong>
+            <span>{{ harvest.quantity | number:'1.0-2' }} t · {{ harvest.category }} categoría</span>
+            <small>Socio: {{ harvest.partner }}</small>
+          </div>
+          <div class="history__meta">
+            <time [attr.datetime]="harvest.date.toISOString()">{{ harvest.date | date:'mediumDate' }}</time>
+            <span>{{ harvest.date | date:'shortTime' }}</span>
+          </div>
+        </li>
+      </ul>
+    </ng-container>
+  </section>
+</div>

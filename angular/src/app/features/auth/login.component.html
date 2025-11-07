@@ -1,0 +1,49 @@
+<div class="login">
+  <div class="login__card">
+    <div class="login__icon">🌱</div>
+    <h1>Cooperativa Agro</h1>
+    <p>Gestiona cosechas e inventario desde un solo panel.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label class="field">
+        <span>Correo electrónico</span>
+        <input
+          type="email"
+          formControlName="email"
+          placeholder="innovacode1857&#64;gmail.com"
+          autocomplete="email"
+        >
+        <small *ngIf="emailControl.invalid && (emailControl.dirty || emailControl.touched)">
+          Ingresa un correo válido
+        </small>
+      </label>
+
+      <label class="field">
+        <span>Contraseña</span>
+        <div class="password">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="innovacode"
+            autocomplete="current-password"
+          >
+          <button type="button" (click)="togglePasswordVisibility()">
+            <span class="material-symbols-outlined">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+        <small *ngIf="passwordControl.invalid && (passwordControl.dirty || passwordControl.touched)">
+          Ingresa tu contraseña
+        </small>
+      </label>
+
+      <button type="submit" [disabled]="submitting" class="login__btn">
+        <span class="material-symbols-outlined" *ngIf="!submitting">login</span>
+        <span *ngIf="submitting" class="spinner"></span>
+        <span>{{ submitting ? 'Ingresando...' : 'Ingresar' }}</span>
+      </button>
+    </form>
+
+  <p class="login__hint">Credenciales demo: innovacode1857&#64;gmail.com / innovacode</p>
+    <p class="login__error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </div>
+</div>

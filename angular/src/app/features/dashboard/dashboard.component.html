@@ -1,0 +1,115 @@
+<div class="dashboard">
+  <header class="dashboard__header">
+    <div>
+      <h2>Panel de control</h2>
+      <p>Administra la cooperativa desde este panel centralizado.</p>
+    </div>
+  <a [routerLink]="'/cosechas'" class="header__action">
+      <span class="material-symbols-outlined">add_circle</span>
+      <span>Registrar cosecha</span>
+    </a>
+  </header>
+
+  <ng-container *ngIf="summary$ | async as vm">
+    <section class="summary-grid">
+      <article class="summary-card primary">
+        <span class="material-symbols-outlined">spa</span>
+        <div>
+          <h3>Cosechas registradas</h3>
+          <p class="value">{{ vm.totalHarvests }}</p>
+          <p class="helper">{{ vm.totalHarvestQuantity | number:'1.0-1' }} toneladas acumuladas</p>
+        </div>
+      </article>
+      <article class="summary-card info">
+        <span class="material-symbols-outlined">inventory_2</span>
+        <div>
+          <h3>Productos inventariados</h3>
+          <p class="value">{{ vm.inventoryCount }}</p>
+          <p class="helper">Stock en seguimiento activo</p>
+        </div>
+      </article>
+      <article class="summary-card success">
+        <span class="material-symbols-outlined">event_available</span>
+        <div>
+          <h3>Stock saludable</h3>
+          <p class="value">{{ vm.healthyInventory }}</p>
+          <p class="helper">Con existencias superiores a 10 unidades</p>
+        </div>
+      </article>
+      <article class="summary-card warning">
+        <span class="material-symbols-outlined">warning</span>
+        <div>
+          <h3>Alertas de reposición</h3>
+          <p class="value">{{ vm.criticalItems.length }}</p>
+          <p class="helper">Productos con niveles críticos</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard__alerts">
+      <h3>Alertas prioritarias</h3>
+      <ng-container *ngIf="vm.criticalItems.length; else allGood">
+        <article class="alerts__card">
+          <div class="alerts__header">
+            <span class="material-symbols-outlined">priority_high</span>
+            <div>
+              <h4>Productos por reponer</h4>
+              <p>{{ vm.criticalItems.length }} ítems requieren seguimiento inmediato</p>
+            </div>
+          </div>
+          <ul>
+            <li *ngFor="let item of vm.criticalItems; trackBy: trackInventory">
+              <div>
+                <strong>{{ item.name }}</strong>
+                <span>Quedan {{ item.quantity | number:'1.0-0' }} {{ item.unit }}</span>
+                <small>Categoría: {{ item.category }}</small>
+              </div>
+              <span class="badge">Crítico</span>
+            </li>
+          </ul>
+          <a routerLink="/alertas" class="alerts__cta">
+            <span>Ver detalle de alertas</span>
+            <span class="material-symbols-outlined">chevron_right</span>
+          </a>
+        </article>
+      </ng-container>
+      <ng-template #allGood>
+        <article class="alerts__empty">
+          <span class="material-symbols-outlined">verified</span>
+          <h4>Todo el inventario está en niveles seguros</h4>
+          <p>Recuerda actualizar las existencias cuando recibas nuevos insumos.</p>
+        </article>
+      </ng-template>
+    </section>
+
+    <section class="dashboard__actions">
+      <h3>Secciones clave</h3>
+      <div class="actions__grid">
+  <a *ngFor="let action of actions" [routerLink]="action.path" class="action-card" [ngClass]="action.accent">
+          <div class="action-card__icon">
+            <span class="material-symbols-outlined">{{ action.icon }}</span>
+          </div>
+          <div>
+            <h4>{{ action.title }}</h4>
+            <p>{{ action.subtitle }}</p>
+          </div>
+          <span class="material-symbols-outlined action-card__chevron">chevron_right</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="dashboard__recent" *ngIf="vm.recentHarvests.length">
+      <h3>Últimas cosechas registradas</h3>
+      <ul>
+        <li *ngFor="let harvest of vm.recentHarvests">
+          <div>
+            <strong>{{ harvest.crop }}</strong>
+            <span>{{ harvest.quantity | number:'1.0-2' }} t · {{ harvest.category }} categoría</span>
+            <small>Socio: {{ harvest.partner }}</small>
+          </div>
+          <time [attr.datetime]="harvest.date.toISOString()">{{ harvest.date | date:'mediumDate' }} · {{ harvest.date | date:'shortTime' }}</time>
+        </li>
+      </ul>
+    </section>
+  </ng-container>
+</div>

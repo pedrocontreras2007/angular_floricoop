@@ -1,0 +1,48 @@
+<div class="alerts">
+  <header class="alerts__header">
+    <div>
+      <h2>Alertas de stock</h2>
+      <p>Monitorea el estado de tus productos críticos en tiempo real.</p>
+    </div>
+  </header>
+
+  <ng-container *ngIf="alerts$ | async as vm">
+    <section class="alerts__summary">
+      <article class="summary-card">
+        <span class="material-symbols-outlined">priority_high</span>
+        <div>
+          <h3>Resumen de alertas</h3>
+          <p>
+            {{ vm.criticalCount > 0
+              ? vm.criticalCount + ' productos requieren reposición'
+              : 'No hay productos en nivel crítico' }}
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <section class="alerts__list">
+      <h3>Detalle por producto</h3>
+      <article class="empty" *ngIf="!vm.ordered.length">
+        <span class="material-symbols-outlined">inventory_2</span>
+        <p>Aún no hay productos en inventario.</p>
+      </article>
+
+      <ul *ngIf="vm.ordered.length">
+        <li *ngFor="let item of vm.ordered; trackBy: trackById" [class.critical]="item.quantity <= 10">
+          <div class="item__icon" [class.critical]="item.quantity <= 10">
+            <span class="material-symbols-outlined">{{ item.quantity <= 10 ? 'warning' : 'check_circle' }}</span>
+          </div>
+          <div class="item__body">
+            <strong>{{ item.name }}</strong>
+            <span>{{ item.quantity | number:'1.0-0' }} {{ item.unit }} disponibles</span>
+            <small>Categoría: {{ item.category }}</small>
+          </div>
+          <span class="badge" [class.badge__critical]="item.quantity <= 10" [class.badge__safe]="item.quantity > 10">
+            {{ item.quantity <= 10 ? 'Crítico' : 'Saludable' }}
+          </span>
+        </li>
+      </ul>
+    </section>
+  </ng-container>
+</div>

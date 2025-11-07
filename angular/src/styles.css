@@ -1,0 +1,17 @@
+html, body {
+  min-height: 100%;
+  margin: 0;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(180deg, rgba(46, 125, 50, 0.05), rgba(21, 101, 192, 0.05));
+  color: #0f172a;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+app-root {
+  flex: 1;
+  display: block;
+}

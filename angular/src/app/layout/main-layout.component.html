@@ -1,0 +1,35 @@
+<div class="layout">
+  <header class="layout__header">
+    <div class="brand">
+      <span class="brand__icon">🌱</span>
+      <div>
+        <h1>Cooperativa Agro</h1>
+        <p>Panel de administración de cosechas e inventario</p>
+      </div>
+    </div>
+    <div class="user" *ngIf="userState$ | async as user">
+      <span class="material-symbols-outlined">account_circle</span>
+      <span>{{ user.email }}</span>
+    </div>
+    <button type="button" class="logout" (click)="logout()">
+      <span class="material-symbols-outlined">logout</span>
+      <span>Cerrar sesión</span>
+    </button>
+  </header>
+
+  <nav class="layout__nav">
+    <a
+      *ngFor="let link of navLinks"
+      [routerLink]="link.path"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      <span class="material-symbols-outlined">{{ link.icon }}</span>
+      <span>{{ link.label }}</span>
+    </a>
+  </nav>
+
+  <main class="layout__content">
+    <router-outlet></router-outlet>
+  </main>
+</div>
