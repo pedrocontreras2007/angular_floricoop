@@ -6,7 +6,7 @@
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="field">
         <label for="crop">Cultivo</label>
-        <input id="crop" type="text" formControlName="crop" placeholder="Ej. Café Arábica">
+        <input id="crop" type="text" formControlName="crop" placeholder="Ej. Lavanda">
         <small *ngIf="form.controls.crop.invalid && (form.controls.crop.dirty || form.controls.crop.touched)">
           Ingresa el nombre del cultivo
         </small>
@@ -14,10 +14,10 @@
 
       <div class="field-row">
         <div class="field">
-          <label for="quantity">Cantidad (toneladas)</label>
-          <input id="quantity" type="text" formControlName="quantity" placeholder="Ej. 12.5">
+          <label for="quantity">Cantidad (unidades)</label>
+          <input id="quantity" type="text" formControlName="quantity" placeholder="Ej. 120">
           <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
-            Usa un número válido y positivo (máx. 2 decimales)
+            Usa un número entero positivo de unidades
           </small>
         </div>
         <div class="field">
@@ -28,13 +28,34 @@
         </div>
       </div>
 
-      <div class="field">
-        <label for="partner">Socio productor</label>
-        <input id="partner" type="text" formControlName="partner" placeholder="Ej. Coop Andina">
-        <small *ngIf="form.controls.partner.invalid && (form.controls.partner.dirty || form.controls.partner.touched)">
-          Ingresa el nombre del socio
-        </small>
+      <div class="field-row">
+        <div class="field">
+          <label for="purchase-price">Precio de compra (CLP)</label>
+          <input id="purchase-price" type="text" formControlName="purchasePriceClp" placeholder="Ej. 15000">
+          <small *ngIf="form.controls.purchasePriceClp.invalid && (form.controls.purchasePriceClp.dirty || form.controls.purchasePriceClp.touched)">
+            Usa un monto válido (máx. 2 decimales)
+          </small>
+        </div>
+        <div class="field">
+          <label for="sale-price">Precio de venta (CLP)</label>
+          <input id="sale-price" type="text" formControlName="salePriceClp" placeholder="Ej. 23000">
+          <small *ngIf="form.controls.salePriceClp.invalid && (form.controls.salePriceClp.dirty || form.controls.salePriceClp.touched)">
+            Usa un monto válido (máx. 2 decimales)
+          </small>
+        </div>
       </div>
+
+        <div class="field">
+          <label for="recordedBy">Registrado por</label>
+          <select id="recordedBy" formControlName="recordedBy">
+            <option *ngFor="let option of userRoleOptions" [value]="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+
+        <div class="field" *ngIf="form.controls.recordedBy.value === 'socio'">
+          <label for="harvest-partner-name">Nombre del socio (opcional)</label>
+          <input id="harvest-partner-name" type="text" formControlName="recordedByPartnerName" placeholder="Ej. Coop Andina">
+        </div>
 
       <button type="submit" [disabled]="submitting" class="cta">
         <span class="material-symbols-outlined">add_circle</span>
@@ -46,24 +67,33 @@
   <section class="harvest__history">
     <div class="history__header">
       <h3>Historial reciente</h3>
-      <p>Las entradas más recientes aparecen primero.</p>
+      <div class="history__filters">
+        <label for="harvest-filter">Filtrar por usuario</label>
+        <select id="harvest-filter" [formControl]="filterControl">
+          <option value="todos">Todos</option>
+          <option *ngFor="let option of userRoleOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </div>
     </div>
 
-    <ng-container *ngIf="harvests$ | async as harvests">
-      <article class="empty" *ngIf="!harvests.length">
+    <ng-container *ngIf="vm$ | async as vm">
+      <article class="empty" *ngIf="!vm.harvests.length">
         <span class="material-symbols-outlined">grass</span>
         <h4>Aún no hay cosechas registradas</h4>
         <p>Agrega tu primera entrada para comenzar a visualizar el desempeño de la cooperativa.</p>
       </article>
-      <ul *ngIf="harvests.length" class="history__list">
-        <li *ngFor="let harvest of harvests; trackBy: trackHarvest">
+      <ul *ngIf="vm.harvests.length" class="history__list">
+        <li *ngFor="let harvest of vm.harvests; trackBy: trackHarvest">
           <div class="history__icon">
             <span class="material-symbols-outlined">spa</span>
           </div>
           <div class="history__content">
             <strong>{{ harvest.crop }}</strong>
-            <span>{{ harvest.quantity | number:'1.0-2' }} t · {{ harvest.category }} categoría</span>
-            <small>Socio: {{ harvest.partner }}</small>
+            <span>{{ harvest.quantity | quantityFormat }} unidades · {{ harvest.category }} categoría</span>
+            <small *ngIf="harvest.purchasePriceClp">Compra: {{ harvest.purchasePriceClp | currency:'CLP':'symbol-narrow':'1.0-0' }}</small>
+            <small *ngIf="harvest.salePriceClp">Venta: {{ harvest.salePriceClp | currency:'CLP':'symbol-narrow':'1.0-0' }}</small>
+            <small>Registrado por: {{ userRoleLabels[harvest.recordedBy] }}</small>
+            <small *ngIf="harvest.recordedBy === 'socio' && harvest.recordedByPartnerName">Nombre del socio: {{ harvest.recordedByPartnerName }}</small>
           </div>
           <div class="history__meta">
             <time [attr.datetime]="harvest.date.toISOString()">{{ harvest.date | date:'mediumDate' }}</time>
@@ -71,6 +101,40 @@
           </div>
         </li>
       </ul>
+
+      <section class="fifo" *ngIf="vm.fifoQueue.length">
+        <div class="fifo__header">
+          <h3>Organizador FIFO de cosechas</h3>
+          <p>Lo más antiguo sale primero. Útil para planificar entregas y evitar rezagos.</p>
+        </div>
+        <div class="fifo__table-wrapper">
+          <table class="fifo__table">
+            <thead>
+              <tr>
+                <th>Prioridad</th>
+                <th>Fecha</th>
+                <th>Cultivo</th>
+                <th>Cantidad</th>
+                <th>Compra</th>
+                <th>Venta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let harvest of vm.fifoQueue; let idx = index; trackBy: trackHarvest">
+                <td>
+                  <span class="fifo__badge" [class.fifo__badge--primary]="idx === 0">{{ idx + 1 }}</span>
+                  <span class="fifo__badge-label" *ngIf="idx === 0">Siguiente salida</span>
+                </td>
+                <td>{{ harvest.date | date:'mediumDate' }}</td>
+                <td>{{ harvest.crop }}</td>
+                <td>{{ harvest.quantity | quantityFormat }} unidades</td>
+                <td>{{ harvest.purchasePriceClp ? (harvest.purchasePriceClp | currency:'CLP':'symbol-narrow':'1.0-0') : '—' }}</td>
+                <td>{{ harvest.salePriceClp ? (harvest.salePriceClp | currency:'CLP':'symbol-narrow':'1.0-0') : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </ng-container>
   </section>
 </div>

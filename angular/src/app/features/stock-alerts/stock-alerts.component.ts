@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { map } from 'rxjs';
 import { DataService } from '../../core/services/data.service';
 import { InventoryItem } from '../../core/models/inventory-item.model';
+import { QuantityFormatPipe } from '../../shared/pipes/quantity-format.pipe';
 
 @Component({
   selector: 'app-stock-alerts',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, QuantityFormatPipe],
   templateUrl: './stock-alerts.component.html',
   styleUrls: ['./stock-alerts.component.css']
 })

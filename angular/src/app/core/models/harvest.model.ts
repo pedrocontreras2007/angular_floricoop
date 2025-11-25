@@ -1,3 +1,5 @@
+import { UserRole } from './user-role.model';
+
 export type HarvestCategory = 'primera' | 'segunda' | 'tercera';
 
 export interface Harvest {
@@ -6,7 +8,10 @@ export interface Harvest {
   category: HarvestCategory;
   quantity: number;
   date: Date;
-  partner: string;
+  recordedBy: UserRole;
+  recordedByPartnerName?: string;
+  purchasePriceClp?: number;
+  salePriceClp?: number;
 }
 
 export type HarvestInput = Omit<Harvest, 'id'>;

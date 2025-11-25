@@ -10,7 +10,7 @@
         <span class="material-symbols-outlined">inventory_2</span>
         <div>
           <h3>Stock total</h3>
-          <p>{{ vm.totalStock | number:'1.0-0' }} unidades</p>
+          <p>{{ vm.totalStock | quantityFormat }} unidades</p>
           <small>Suma de todas las existencias registradas</small>
         </div>
       </article>
@@ -40,6 +40,25 @@
       </article>
     </section>
 
+    <section class="profit" *ngIf="vm.harvestProfit.entries.length">
+      <div class="profit__header">
+        <h3>Gráfico de % de ganancias</h3>
+        <p>Margen promedio {{ vm.harvestProfit.averageMargin | number:'1.0-1' }}% sobre los precios registrados (CLP).</p>
+      </div>
+      <ul class="profit-chart">
+        <li *ngFor="let entry of vm.harvestProfit.entries">
+          <div class="profit-chart__info">
+            <strong>{{ entry.crop }}</strong>
+            <small>Compra {{ entry.purchasePriceClp | currency:'CLP':'symbol-narrow':'1.0-0' }} · Venta {{ entry.salePriceClp | currency:'CLP':'symbol-narrow':'1.0-0' }}</small>
+          </div>
+          <div class="profit-chart__bar">
+            <div class="profit-chart__fill" [style.width.%]="entry.margin > 100 ? 100 : entry.margin < 0 ? 0 : entry.margin"></div>
+            <span class="profit-chart__value">{{ entry.margin | number:'1.0-1' }}%</span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
     <section class="categories">
       <h3>Distribución por categoría</h3>
       <article class="empty" *ngIf="(vm.items.length === 0)">
@@ -49,7 +68,7 @@
       <div class="chips" *ngIf="vm.items.length">
         <div class="chip" *ngFor="let entry of vm.categoryTotals | keyvalue">
           <span class="chip__label">{{ entry.key }}</span>
-          <span class="chip__value">{{ entry.value | number:'1.0-0' }} unidades</span>
+          <span class="chip__value">{{ entry.value | quantityFormat }} unidades</span>
         </div>
       </div>
     </section>
@@ -67,7 +86,7 @@
           </div>
           <div>
             <strong>{{ item.name }}</strong>
-            <span>Quedan {{ item.quantity | number:'1.0-0' }} {{ item.unit }}</span>
+            <span>Quedan {{ item.quantity | quantityFormat }} unidades</span>
             <small>Categoría: {{ item.category }}</small>
           </div>
           <span class="badge">Reposición</span>
@@ -82,21 +101,21 @@
           <span class="material-symbols-outlined">trending_up</span>
           <div>
             <strong>Mayor stock</strong>
-            <span>{{ vm.highestStock ? vm.highestStock.name + ' (' + (vm.highestStock.quantity | number:'1.0-0') + ' ' + vm.highestStock.unit + ')' : 'Sin datos' }}</span>
+            <span>{{ vm.highestStock ? vm.highestStock.name + ' (' + (vm.highestStock.quantity | quantityFormat) + ' unidades)' : 'Sin datos' }}</span>
           </div>
         </div>
         <div class="summary-row">
           <span class="material-symbols-outlined">trending_down</span>
           <div>
             <strong>Menor stock</strong>
-            <span>{{ vm.lowestStock ? vm.lowestStock.name + ' (' + (vm.lowestStock.quantity | number:'1.0-0') + ' ' + vm.lowestStock.unit + ')' : 'Sin datos' }}</span>
+            <span>{{ vm.lowestStock ? vm.lowestStock.name + ' (' + (vm.lowestStock.quantity | quantityFormat) + ' unidades)' : 'Sin datos' }}</span>
           </div>
         </div>
         <div class="summary-row">
           <span class="material-symbols-outlined">scale</span>
           <div>
             <strong>Stock promedio</strong>
-            <span>{{ vm.averageStock | number:'1.0-0' }} unidades por producto</span>
+            <span>{{ vm.averageStock | quantityFormat }} unidades por producto</span>
           </div>
         </div>
       </article>

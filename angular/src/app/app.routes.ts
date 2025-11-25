@@ -31,6 +31,10 @@ export const appRoutes: Routes = [
         loadComponent: () => import('./features/stock-alerts/stock-alerts.component').then(m => m.StockAlertsComponent)
       },
       {
+        path: 'mermas',
+        loadComponent: () => import('./features/losses/losses.component').then(m => m.LossesComponent)
+      },
+      {
         path: 'reportes',
         loadComponent: () => import('./features/reports/reports.component').then(m => m.ReportsComponent)
       },

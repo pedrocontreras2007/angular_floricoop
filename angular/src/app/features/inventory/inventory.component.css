@@ -100,9 +100,20 @@ small {
   color: #0f172a;
 }
 
-.list__header p {
-  margin: 0;
-  color: #64748b;
+.list__filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.list__filters label {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.list__filters select {
+  max-width: 200px;
 }
 
 .list {
@@ -150,6 +161,8 @@ small {
 
 .list__content small {
   color: #94a3b8;
+  display: block;
+  margin-top: 0.2rem;
 }
 
 .list__action {

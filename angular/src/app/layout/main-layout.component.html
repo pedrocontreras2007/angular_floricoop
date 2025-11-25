@@ -1,15 +1,15 @@
 <div class="layout">
   <header class="layout__header">
     <div class="brand">
-      <span class="brand__icon">🌱</span>
+      <img class="brand__logo" src="assets/images/floricoop-logo.png" alt="Logotipo de Floricoop">
       <div>
-        <h1>Cooperativa Agro</h1>
+  <h1>Cooperativa Floricoop</h1>
         <p>Panel de administración de cosechas e inventario</p>
       </div>
     </div>
-    <div class="user" *ngIf="userState$ | async as user">
-      <span class="material-symbols-outlined">account_circle</span>
-      <span>{{ user.email }}</span>
+    <div class="layout__today" aria-label="Fecha actual">
+      <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+      <span>{{ todayLabel }}</span>
     </div>
     <button type="button" class="logout" (click)="logout()">
       <span class="material-symbols-outlined">logout</span>

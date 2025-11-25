@@ -35,7 +35,7 @@
           </div>
           <div class="item__body">
             <strong>{{ item.name }}</strong>
-            <span>{{ item.quantity | number:'1.0-0' }} {{ item.unit }} disponibles</span>
+            <span>{{ item.quantity | quantityFormat }} unidades disponibles</span>
             <small>Categoría: {{ item.category }}</small>
           </div>
           <span class="badge" [class.badge__critical]="item.quantity <= 10" [class.badge__safe]="item.quantity > 10">

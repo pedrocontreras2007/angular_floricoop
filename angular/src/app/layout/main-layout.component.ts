@@ -22,15 +22,31 @@ export class MainLayoutComponent {
     { label: 'Cosechas', icon: 'compost', path: '/cosechas' },
     { label: 'Inventario', icon: 'inventory_2', path: '/inventario' },
     { label: 'Alertas', icon: 'warning', path: '/alertas' },
+    { label: 'Mermas', icon: 'delete_sweep', path: '/mermas' },
     { label: 'Reportes', icon: 'insights', path: '/reportes' }
   ];
 
   readonly userState$ = this.authService.state$;
+  readonly todayLabel = this.capitalize(
+    new Intl.DateTimeFormat('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(new Date())
+  );
 
   constructor(private readonly authService: AuthService, private readonly router: Router) {}
 
   logout(): void {
     this.authService.logout();
     this.router.navigateByUrl('/login');
+  }
+
+  private capitalize(value: string): string {
+    if (!value) {
+      return value;
+    }
+    return value.charAt(0).toUpperCase() + value.slice(1);
   }
 }

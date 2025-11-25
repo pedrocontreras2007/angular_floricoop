@@ -17,7 +17,7 @@
           <label for="quantity">Cantidad</label>
           <input id="quantity" type="text" formControlName="quantity" placeholder="Ej. 18">
           <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
-            Ingresa un número válido (máx. 2 decimales)
+            Ingresa un número válido. Solo las cantidades en kg aceptan decimales.
           </small>
         </div>
         <div class="field">
@@ -36,6 +36,18 @@
         </select>
       </div>
 
+      <div class="field">
+        <label for="recorded-by">Registrado por</label>
+        <select id="recorded-by" formControlName="recordedBy">
+          <option *ngFor="let option of userRoleOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </div>
+
+      <div class="field" *ngIf="form.controls.recordedBy.value === 'socio'">
+        <label for="recorded-by-partner">Nombre del socio (opcional)</label>
+        <input id="recorded-by-partner" type="text" formControlName="recordedByPartnerName" placeholder="Ej. Coop Andina">
+      </div>
+
       <button type="submit" class="cta">
         <span class="material-symbols-outlined">add_box</span>
         <span>Agregar al inventario</span>
@@ -46,25 +58,33 @@
   <section class="inventory__list">
     <div class="list__header">
       <h3>Existencias</h3>
-      <p>Actualiza las cantidades conforme recibas o utilices insumos.</p>
+      <div class="list__filters">
+        <label for="inventory-filter">Filtrar por usuario</label>
+        <select id="inventory-filter" [formControl]="filterControl">
+          <option value="todos">Todos</option>
+          <option *ngFor="let option of userRoleOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </div>
     </div>
 
-    <ng-container *ngIf="inventory$ | async as items">
-      <article class="empty" *ngIf="!items.length">
+    <ng-container *ngIf="vm$ | async as vm">
+      <article class="empty" *ngIf="!vm.items.length">
         <span class="material-symbols-outlined">inventory_2</span>
         <h4>No hay insumos registrados</h4>
         <p>Agrega los materiales para mantener el control de stock y reposiciones.</p>
       </article>
 
-      <ul *ngIf="items.length" class="list">
-        <li *ngFor="let item of items; trackBy: trackById" [class.critical]="item.quantity <= 10">
+      <ul *ngIf="vm.items.length" class="list">
+        <li *ngFor="let item of vm.items; trackBy: trackById" [class.critical]="item.quantity <= 10">
           <div class="list__icon">
             <span class="material-symbols-outlined">inventory</span>
           </div>
           <div class="list__content">
             <strong>{{ item.name }}</strong>
-            <span>{{ item.quantity | number:'1.0-0' }} {{ item.unit }}</span>
-            <small>Categoría: {{ item.category }}</small>
+            <span>{{ item.quantity | quantityFormat }} unidades</span>
+            <small>Categoría: {{ item.category }}.</small>
+            <small>Registrado por: {{ userRoleLabels[item.recordedBy] }}</small>
+            <small *ngIf="item.recordedBy === 'socio' && item.recordedByPartnerName">Nombre del socio: {{ item.recordedByPartnerName }}</small>
           </div>
           <button type="button" class="list__action" (click)="adjustQuantity(item)">
             <span class="material-symbols-outlined">edit</span>

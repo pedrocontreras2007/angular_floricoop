@@ -1,24 +1,41 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { combineLatest, map, startWith } from 'rxjs';
 import { DataService } from '../../core/services/data.service';
 import { InventoryCategory, InventoryItem } from '../../core/models/inventory-item.model';
+import { QuantityFormatPipe } from '../../shared/pipes/quantity-format.pipe';
+import { UserRole, USER_ROLE_LABELS, USER_ROLE_OPTIONS } from '../../core/models/user-role.model';
 
 @Component({
   selector: 'app-inventory',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, QuantityFormatPipe],
   templateUrl: './inventory.component.html',
   styleUrls: ['./inventory.component.css']
 })
 export class InventoryComponent {
-  readonly inventory$ = this.data.inventory$;
+  private readonly defaultRole = USER_ROLE_OPTIONS[0]?.value ?? 'presidente';
+
+  readonly filterControl = this.fb.nonNullable.control<'todos' | UserRole>('todos');
+
+  readonly vm$ = combineLatest([
+    this.data.inventory$,
+    this.filterControl.valueChanges.pipe(startWith(this.filterControl.value))
+  ]).pipe(
+    map(([items, filter]) => {
+      const filtered = filter === 'todos' ? items : items.filter(item => item.recordedBy === filter);
+      return { items: filtered, selectedFilter: filter };
+    })
+  );
 
   readonly form = this.fb.group({
     name: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(80)]),
     quantity: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^[0-9]*[.,]?[0-9]{0,2}$/)]),
     unit: this.fb.nonNullable.control('kg', [Validators.required, Validators.maxLength(12)]),
-    category: this.fb.nonNullable.control<InventoryCategory>('planta')
+    category: this.fb.nonNullable.control<InventoryCategory>('planta'),
+    recordedBy: this.fb.nonNullable.control<UserRole>(this.defaultRole),
+    recordedByPartnerName: this.fb.control('')
   });
 
   readonly categories: { value: InventoryCategory; label: string }[] = [
@@ -27,6 +44,9 @@ export class InventoryComponent {
     { value: 'pesticida', label: 'Pesticida' },
     { value: 'herramienta', label: 'Herramienta' }
   ];
+
+  readonly userRoleOptions = USER_ROLE_OPTIONS;
+  readonly userRoleLabels = USER_ROLE_LABELS;
 
   constructor(private readonly fb: FormBuilder, private readonly data: DataService) {}
 
@@ -37,38 +57,79 @@ export class InventoryComponent {
     }
 
     const raw = this.form.getRawValue();
-    const quantity = parseFloat(raw.quantity.replace(',', '.'));
+    const parsed = parseFloat(raw.quantity.replace(',', '.'));
+    const unit = raw.unit.trim();
+    const normalizedUnit = unit.toLowerCase();
+    const isKilogram = normalizedUnit === 'kg';
 
-    if (!Number.isFinite(quantity) || quantity < 0) {
+    if (!Number.isFinite(parsed) || parsed < 0) {
       this.form.controls.quantity.setErrors({ invalid: true });
       return;
     }
 
+    const quantity = isKilogram ? Math.round(parsed * 100) / 100 : Math.round(parsed);
+    const recordedByPartnerName = raw.recordedBy === 'socio'
+      ? raw.recordedByPartnerName?.trim() || undefined
+      : undefined;
+
     this.data.addInventoryItem({
       name: raw.name.trim(),
       quantity,
-      unit: raw.unit.trim(),
-      category: raw.category
+      unit,
+      category: raw.category,
+      recordedBy: raw.recordedBy,
+      recordedByPartnerName
     });
 
-    this.form.reset({ name: '', quantity: '', unit: 'kg', category: 'planta' });
+    this.form.reset({
+      name: '',
+      quantity: '',
+      unit: 'kg',
+      category: 'planta',
+      recordedBy: this.defaultRole,
+      recordedByPartnerName: ''
+    });
   }
 
   adjustQuantity(item: InventoryItem): void {
-    const input = window.prompt(`Nueva cantidad para ${item.name}`, item.quantity.toFixed(2));
+    const normalizedUnit = item.unit.trim().toLowerCase();
+    const initialValue = normalizedUnit === 'kg' ? (Math.round(item.quantity * 100) / 100).toFixed(2) : Math.round(item.quantity).toString();
+    const input = window.prompt(`Nueva cantidad para ${item.name}`, initialValue);
     if (input === null) {
       return;
     }
 
     const normalized = input.trim().replace(',', '.');
     const value = parseFloat(normalized);
-
     if (!Number.isFinite(value) || value < 0) {
       window.alert('Ingresa un número válido.');
       return;
     }
 
-    this.data.updateInventoryQuantity(item.id, value);
+    const sanitized = normalizedUnit === 'kg' ? Math.round(value * 100) / 100 : Math.round(value);
+
+    const rolePrompt = `¿Quién registra el ajuste?
+Opciones: ${USER_ROLE_OPTIONS.map(option => option.value).join(', ')}`;
+    const roleInput = window.prompt(rolePrompt, item.recordedBy ?? this.defaultRole);
+    if (roleInput === null) {
+      return;
+    }
+
+    const normalizedRole = roleInput.trim().toLowerCase() as UserRole | 'todos';
+    const selectedRole = USER_ROLE_OPTIONS.find(option => option.value === normalizedRole)?.value;
+
+    if (!selectedRole) {
+      window.alert('Rol no válido. Ajuste cancelado.');
+      return;
+    }
+
+    let partnerName: string | undefined;
+    if (selectedRole === 'socio') {
+      const partnerInput = window.prompt('Nombre del socio (opcional)', item.recordedByPartnerName ?? '');
+      partnerName = partnerInput?.trim() || undefined;
+    }
+
+    this.data.updateInventoryQuantity(item.id, sanitized, selectedRole, partnerName);
   }
 
   trackById(_: number, item: InventoryItem): string {

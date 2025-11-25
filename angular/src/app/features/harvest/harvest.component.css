@@ -4,7 +4,8 @@
 }
 
 .harvest__form,
-.harvest__history {
+.harvest__history,
+.fifo {
   background: #ffffff;
   border-radius: 1.75rem;
   padding: 2rem;
@@ -104,9 +105,20 @@ small {
   font-weight: 600;
 }
 
-.history__header p {
-  margin: 0;
-  color: #64748b;
+.history__filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.history__filters label {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.history__filters select {
+  max-width: 200px;
 }
 
 .history__list {
@@ -149,6 +161,8 @@ small {
 
 .history__content small {
   color: #94a3b8;
+  display: block;
+  margin-top: 0.2rem;
 }
 
 .history__meta {
@@ -176,6 +190,77 @@ small {
 .empty p {
   margin-top: 0.5rem;
   color: #64748b;
+}
+
+.fifo {
+  margin-top: 2rem;
+}
+
+.fifo__header {
+  margin-bottom: 1.25rem;
+}
+
+.fifo__header h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.fifo__header p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+}
+
+.fifo__table-wrapper {
+  overflow-x: auto;
+}
+
+.fifo__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.fifo__table th,
+.fifo__table td {
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  color: #475569;
+}
+
+.fifo__table th {
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.fifo__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.fifo__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.15);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.fifo__badge--primary {
+  background: rgba(46, 125, 50, 0.2);
+  color: #2e7d32;
+}
+
+.fifo__badge-label {
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2e7d32;
 }
 
 @media (max-width: 768px) {

@@ -1,0 +1,166 @@
+<div class="losses">
+  <header class="losses__header">
+    <div>
+      <h2>Gestión de mermas</h2>
+      <p>Registra las pérdidas de productos y controla su impacto en el inventario.</p>
+    </div>
+    <button type="button" class="losses__action" (click)="toggleForm()">
+      <span class="material-symbols-outlined">{{ showForm ? 'close' : 'add_circle' }}</span>
+      <span>{{ showForm ? 'Cerrar formulario' : 'Agregar Merma' }}</span>
+    </button>
+  </header>
+
+  <section class="losses__form" *ngIf="showForm">
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="losses__fields">
+        <div class="losses__field">
+          <label for="loss-product">Nombre del producto</label>
+          <input id="loss-product" type="text" formControlName="productName" placeholder="Ej. Semillas de quinoa">
+          <small *ngIf="form.controls.productName.invalid && (form.controls.productName.dirty || form.controls.productName.touched)">
+            Ingresa el nombre del producto (máx. 80 caracteres).
+          </small>
+        </div>
+        <div class="losses__field">
+          <label for="loss-quantity">Cantidad perdida</label>
+          <input id="loss-quantity" type="text" formControlName="quantity" placeholder="Ej. 3">
+          <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
+            Ingresa una cantidad válida mayor a cero (máx. 2 decimales).
+          </small>
+        </div>
+        <div class="losses__field">
+          <label for="loss-date">Fecha</label>
+          <input id="loss-date" type="date" formControlName="date">
+          <small *ngIf="form.controls.date.invalid && (form.controls.date.dirty || form.controls.date.touched)">
+            Selecciona una fecha válida.
+          </small>
+        </div>
+        <div class="losses__field">
+          <label for="loss-recorded-by">Registrado por</label>
+          <select id="loss-recorded-by" formControlName="recordedBy">
+            <option *ngFor="let option of userRoleOptions" [value]="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+        <div class="losses__field" *ngIf="form.controls.recordedBy.value === 'socio'">
+          <label for="loss-partner-name">Nombre del socio (opcional)</label>
+          <input id="loss-partner-name" type="text" formControlName="recordedByPartnerName" placeholder="Ej. Coop Andina">
+        </div>
+        <div class="losses__field losses__field--full">
+          <label for="loss-reason">Motivo de la merma</label>
+          <textarea id="loss-reason" rows="3" formControlName="reason" placeholder="Ej. Deterioro por humedad"></textarea>
+          <small *ngIf="form.controls.reason.invalid && (form.controls.reason.dirty || form.controls.reason.touched)">
+            Ingresa el motivo de la merma (máx. 160 caracteres).
+          </small>
+        </div>
+      </div>
+      <div class="losses__actions">
+        <button type="button" class="losses__button losses__button--ghost" (click)="cancel()">
+          <span class="material-symbols-outlined">close</span>
+          <span>Cancelar</span>
+        </button>
+        <button type="submit" class="losses__button">
+          <span class="material-symbols-outlined">save</span>
+          <span>Guardar merma</span>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <ng-container *ngIf="vm$ | async as vm">
+    <section class="losses__insights" *ngIf="vm.distribution.length">
+      <article class="losses__chart">
+        <div class="losses__chart-graphic">
+          <svg [attr.viewBox]="chartViewBox" role="img" aria-labelledby="losses-chart-title">
+            <title id="losses-chart-title">Distribución de mermas por producto</title>
+            <circle
+              class="losses__chart-track"
+              [attr.cx]="chartCenter"
+              [attr.cy]="chartCenter"
+              [attr.r]="chartRadius"
+            ></circle>
+            <circle
+              class="losses__chart-slice"
+              *ngFor="let slice of vm.distribution"
+              [attr.cx]="chartCenter"
+              [attr.cy]="chartCenter"
+              [attr.r]="chartRadius"
+              [attr.stroke]="slice.color"
+              [attr.stroke-dasharray]="slice.dashArray"
+              [attr.stroke-dashoffset]="slice.dashOffset"
+            ></circle>
+          </svg>
+          <div class="losses__chart-label">
+            <strong>{{ vm.totalQuantity | quantityFormat }}</strong>
+            <span>Unidades perdidas</span>
+          </div>
+        </div>
+        <ul class="losses__chart-legend">
+          <li *ngFor="let slice of vm.distribution">
+            <span class="losses__legend-color" [style.background-color]="slice.color"></span>
+            <div>
+              <strong>{{ slice.label }}</strong>
+              <small>{{ slice.total | quantityFormat }} unidades · {{ slice.percentage | number:'1.0-1' }}%</small>
+            </div>
+          </li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="losses__list">
+      <div class="losses__filters">
+        <label for="losses-filter">Filtrar por usuario</label>
+        <select id="losses-filter" [formControl]="filterControl">
+          <option value="todos">Todos</option>
+          <option *ngFor="let option of userRoleOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </div>
+
+      <article class="losses__empty" *ngIf="!vm.losses.length">
+        <span class="material-symbols-outlined">inventory_2</span>
+        <h3>No hay mermas registradas</h3>
+        <p>Utiliza el botón "Agregar Merma" para capturar las pérdidas registradas en la cooperativa.</p>
+      </article>
+
+      <div class="losses__table-wrapper" *ngIf="vm.losses.length">
+        <table class="losses__table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cantidad perdida</th>
+              <th>Motivo</th>
+              <th>Fecha</th>
+              <th>Registrado por</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let loss of vm.losses; trackBy: trackLoss">
+              <td>
+                <strong>{{ loss.productName }}</strong>
+              </td>
+              <td>{{ loss.quantity | quantityFormat }} unidades</td>
+              <td>{{ loss.reason }}</td>
+              <td>
+                <span>{{ loss.date | date:'mediumDate' }}</span>
+              </td>
+              <td>
+                <div>Registrado por: {{ userRoleLabels[loss.recordedBy] }}</div>
+                <div *ngIf="loss.recordedBy === 'socio' && loss.recordedByPartnerName">Nombre del socio: {{ loss.recordedByPartnerName }}</div>
+              </td>
+              <td class="losses__cell-actions">
+                <button type="button" (click)="remove(loss)">
+                  <span class="material-symbols-outlined">delete</span>
+                  <span>Eliminar</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="losses__total" *ngIf="vm.losses.length">
+        <span>Total de mermas registradas</span>
+        <strong>{{ vm.totalQuantity | quantityFormat }} unidades</strong>
+      </div>
+    </section>
+  </ng-container>
+</div>
