@@ -3,15 +3,20 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { combineLatest, map, startWith } from 'rxjs';
 import { DataService } from '../../core/services/data.service';
-import { Loss } from '../../core/models/loss.model';
+import { Loss, LossSource } from '../../core/models/loss.model';
 import { QuantityFormatPipe } from '../../shared/pipes/quantity-format.pipe';
 import { UserRole, USER_ROLE_LABELS, USER_ROLE_OPTIONS } from '../../core/models/user-role.model';
+import { Harvest } from '../../core/models/harvest.model';
+import { InventoryItem } from '../../core/models/inventory-item.model';
+import { AuthService } from '../../core/services/auth.service';
 
 interface LossesViewModel {
   readonly losses: Loss[];
+  readonly lossRows: LossRowView[];
   readonly totalQuantity: number;
   readonly distribution: LossDistributionSlice[];
   readonly selectedFilter: 'todos' | UserRole;
+  readonly availableProducts: LossProductOption[];
 }
 
 interface LossDistributionSlice {
@@ -21,6 +26,27 @@ interface LossDistributionSlice {
   readonly color: string;
   readonly dashArray: string;
   readonly dashOffset: number;
+}
+
+interface LossProductOption {
+  readonly ref: string;
+  readonly name: string;
+  readonly stock: number;
+  readonly source: LossSource;
+  readonly description: string;
+}
+
+interface LossRowView {
+  readonly loss: Loss;
+  readonly remainingStock: number | null;
+  readonly sourceLabel: string;
+}
+
+interface LossProductSelection {
+  readonly source: LossSource;
+  readonly id: string;
+  readonly name: string;
+  readonly stock: number;
 }
 
 @Component({
@@ -44,22 +70,28 @@ export class LossesComponent {
 
   readonly vm$ = combineLatest([
     this.data.losses$,
+    this.data.inventory$,
+    this.data.harvests$,
     this.filterControl.valueChanges.pipe(startWith(this.filterControl.value))
   ]).pipe(
-    map(([losses, filter]): LossesViewModel => {
+    map(([losses, inventory, harvests, filter]): LossesViewModel => {
+      const availableProducts = this.buildAvailableProducts(harvests, inventory);
       const filtered = filter === 'todos' ? losses : losses.filter(loss => loss.recordedBy === filter);
       const ordered = [...filtered].sort((a, b) => b.date.getTime() - a.date.getTime());
       const totalQuantity = ordered.reduce((sum, loss) => sum + loss.quantity, 0);
       const distribution = this.buildDistribution(ordered, totalQuantity);
-      return { losses: ordered, totalQuantity, distribution, selectedFilter: filter };
+      const inventoryMap = new Map(inventory.map(item => [item.id, item]));
+      const harvestMap = new Map(harvests.map(entry => [entry.id, entry]));
+      const lossRows = this.buildLossRows(ordered, inventoryMap, harvestMap);
+      return { losses: ordered, lossRows, totalQuantity, distribution, selectedFilter: filter, availableProducts };
     })
   );
 
   showForm = false;
 
   readonly form = this.fb.group({
-    productName: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(80)]),
-    quantity: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^[0-9]*[.,]?[0-9]{0,2}$/)]),
+    productRef: this.fb.nonNullable.control('', [Validators.required]),
+    quantity: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^[0-9]*$/)]),
     reason: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(160)]),
     date: this.fb.nonNullable.control(this.toISODate(new Date()), [Validators.required]),
     recordedBy: this.fb.nonNullable.control<UserRole>(this.defaultRole),
@@ -69,13 +101,17 @@ export class LossesComponent {
   readonly userRoleOptions = USER_ROLE_OPTIONS;
   readonly userRoleLabels = USER_ROLE_LABELS;
 
-  constructor(private readonly fb: FormBuilder, private readonly data: DataService) {}
+  constructor(
+    private readonly fb: FormBuilder,
+    private readonly data: DataService,
+    private readonly auth: AuthService
+  ) {}
 
   toggleForm(): void {
     this.showForm = !this.showForm;
     if (this.showForm) {
       this.form.reset({
-        productName: '',
+        productRef: '',
         quantity: '',
         reason: '',
         date: this.toISODate(new Date()),
@@ -92,16 +128,16 @@ export class LossesComponent {
     }
 
     const raw = this.form.getRawValue();
-    const productName = raw.productName.trim();
     const reason = raw.reason.trim();
+    const productRef = raw.productRef;
 
-    if (!productName) {
-      this.form.controls.productName.setErrors({ required: true });
-      this.form.controls.productName.markAsTouched();
+    if (!productRef) {
+      this.form.controls.productRef.setErrors({ required: true });
+      this.form.controls.productRef.markAsTouched();
       return;
     }
 
-    const quantityValue = parseFloat(raw.quantity.replace(',', '.'));
+    const quantityValue = Number(raw.quantity);
 
     if (!Number.isFinite(quantityValue) || quantityValue <= 0) {
       this.form.controls.quantity.setErrors({ invalid: true });
@@ -114,16 +150,23 @@ export class LossesComponent {
       return;
     }
 
-    const quantity = Math.round(quantityValue * 100) / 100;
+    const quantity = Math.round(quantityValue);
+
+    const selection = this.resolveProductSelection(productRef);
+    if (!selection) {
+      this.form.controls.productRef.setErrors({ invalid: true });
+      return;
+    }
+
+    if (quantity > selection.stock) {
+      this.form.controls.quantity.setErrors({ exceedStock: true });
+      return;
+    }
 
     if (!reason) {
       this.form.controls.reason.setErrors({ required: true });
       this.form.controls.reason.markAsTouched();
       return;
-    }
-
-    if (productName !== raw.productName) {
-      this.form.controls.productName.setValue(productName, { emitEvent: false });
     }
 
     if (reason !== raw.reason) {
@@ -134,23 +177,50 @@ export class LossesComponent {
       ? raw.recordedByPartnerName?.trim() || undefined
       : undefined;
 
-    this.data.addLoss({ productName, quantity, reason, date, recordedBy: raw.recordedBy, recordedByPartnerName });
-
-    this.showForm = false;
-    this.form.reset({
-      productName: '',
-      quantity: '',
-      reason: '',
-      date: this.toISODate(new Date()),
-      recordedBy: this.defaultRole,
-      recordedByPartnerName: ''
-    });
+    this.data.addLoss({
+      productName: selection.name,
+      quantity,
+      reason,
+      date,
+      recordedBy: raw.recordedBy,
+      recordedByPartnerName,
+      sourceType: selection.source,
+      sourceId: selection.id
+    })
+      .subscribe({
+        next: () => {
+          const remainingStock = Math.max(selection.stock - quantity, 0);
+          if (selection.source === 'inventory') {
+            this.data.updateInventoryQuantity(
+              selection.id,
+              remainingStock,
+              raw.recordedBy,
+              recordedByPartnerName,
+              this.auth.email ?? undefined
+            );
+          } else {
+            this.data.updateHarvestQuantity(selection.id, remainingStock);
+          }
+          this.showForm = false;
+          this.form.reset({
+            productRef: '',
+            quantity: '',
+            reason: '',
+            date: this.toISODate(new Date()),
+            recordedBy: this.defaultRole,
+            recordedByPartnerName: ''
+          });
+        },
+        error: () => {
+          this.form.setErrors({ submitFailed: true });
+        }
+      });
   }
 
   cancel(): void {
     this.showForm = false;
     this.form.reset({
-      productName: '',
+      productRef: '',
       quantity: '',
       reason: '',
       date: this.toISODate(new Date()),
@@ -167,8 +237,8 @@ export class LossesComponent {
     this.data.removeLoss(loss.id);
   }
 
-  trackLoss(_: number, loss: Loss): string {
-    return loss.id;
+  trackLoss(_: number, row: LossRowView): string {
+    return row.loss.id;
   }
 
   private buildDistribution(losses: Loss[], totalQuantity: number): LossDistributionSlice[] {
@@ -207,6 +277,90 @@ export class LossesComponent {
       offset += length;
       return slice;
     });
+  }
+
+  private buildLossRows(
+    losses: Loss[],
+    inventoryMap: Map<string, InventoryItem>,
+    harvestMap: Map<string, Harvest>
+  ): LossRowView[] {
+    return losses.map(loss => {
+      let remainingStock: number | null = null;
+      let sourceLabel = 'Origen no disponible';
+
+      if (loss.sourceType === 'inventory' && loss.sourceId) {
+        const item = inventoryMap.get(loss.sourceId);
+        sourceLabel = item ? `Inventario · ${item.category}` : 'Inventario';
+        remainingStock = item?.quantity ?? null;
+      } else if (loss.sourceType === 'harvest' && loss.sourceId) {
+        const harvest = harvestMap.get(loss.sourceId);
+        sourceLabel = harvest ? `Cosecha · ${harvest.category}` : 'Cosecha';
+        remainingStock = harvest?.quantity ?? null;
+      }
+
+      return { loss, remainingStock, sourceLabel };
+    });
+  }
+
+  private buildAvailableProducts(harvests: Harvest[], inventory: InventoryItem[]): LossProductOption[] {
+    const inventoryOptions: LossProductOption[] = inventory
+      .filter(item => item.quantity > 0)
+      .map(item => ({
+        ref: `inventory:${item.id}`,
+        name: item.name,
+        stock: item.quantity,
+        source: 'inventory',
+        description: `Inventario · ${item.category}`
+      }));
+
+    const harvestOptions: LossProductOption[] = harvests
+      .filter(harvest => harvest.quantity > 0)
+      .map(harvest => ({
+        ref: `harvest:${harvest.id}`,
+        name: harvest.crop,
+        stock: harvest.quantity,
+        source: 'harvest',
+        description: `Cosecha · ${harvest.category}`
+      }));
+
+    return [...inventoryOptions, ...harvestOptions]
+      .sort((a, b) => a.name.localeCompare(b.name, 'es-CL', { sensitivity: 'base' }));
+  }
+
+  getProductOption(products: LossProductOption[], ref: string | null): LossProductOption | undefined {
+    if (!ref) {
+      return undefined;
+    }
+    return products.find(product => product.ref === ref);
+  }
+
+  private resolveProductSelection(ref: string): LossProductSelection | null {
+    if (!ref) {
+      return null;
+    }
+
+    const [source, id] = ref.split(':');
+    if (!source || !id) {
+      return null;
+    }
+
+    if (source === 'inventory') {
+      const item = this.data.inventorySnapshot.find(entry => entry.id === id);
+      if (!item) {
+        return null;
+      }
+      return { source: 'inventory', id, name: item.name, stock: item.quantity };
+    }
+
+    if (source === 'harvest') {
+      const harvest = this.data.harvestsSnapshot.find(entry => entry.id === id);
+      if (!harvest) {
+        return null;
+      }
+      return { source: 'harvest', id, name: harvest.crop, stock: harvest.quantity };
+    }
+
+    return null;
   }
 
   private toISODate(date: Date): string {

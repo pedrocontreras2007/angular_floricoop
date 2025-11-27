@@ -14,17 +14,10 @@
 
       <div class="field-row">
         <div class="field">
-          <label for="quantity">Cantidad</label>
-          <input id="quantity" type="text" formControlName="quantity" placeholder="Ej. 18">
+          <label for="quantity">Cantidad (unidades)</label>
+          <input id="quantity" type="number" min="0" step="1" formControlName="quantity" placeholder="Ej. 18">
           <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
-            Ingresa un número válido. Solo las cantidades en kg aceptan decimales.
-          </small>
-        </div>
-        <div class="field">
-          <label for="unit">Unidad</label>
-          <input id="unit" type="text" formControlName="unit" placeholder="kg, lt, etc.">
-          <small *ngIf="form.controls.unit.invalid && (form.controls.unit.dirty || form.controls.unit.touched)">
-            Ingresa la unidad
+            Ingresa un número entero válido.
           </small>
         </div>
       </div>
@@ -84,6 +77,7 @@
             <span>{{ item.quantity | quantityFormat }} unidades</span>
             <small>Categoría: {{ item.category }}.</small>
             <small>Registrado por: {{ userRoleLabels[item.recordedBy] }}</small>
+            <small *ngIf="item.recordedByUser">Usuario: {{ item.recordedByUser }}</small>
             <small *ngIf="item.recordedBy === 'socio' && item.recordedByPartnerName">Nombre del socio: {{ item.recordedByPartnerName }}</small>
           </div>
           <button type="button" class="list__action" (click)="adjustQuantity(item)">

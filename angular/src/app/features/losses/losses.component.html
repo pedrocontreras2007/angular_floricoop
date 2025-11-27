@@ -1,31 +1,46 @@
-<div class="losses">
-  <header class="losses__header">
-    <div>
-      <h2>Gestión de mermas</h2>
-      <p>Registra las pérdidas de productos y controla su impacto en el inventario.</p>
-    </div>
-    <button type="button" class="losses__action" (click)="toggleForm()">
-      <span class="material-symbols-outlined">{{ showForm ? 'close' : 'add_circle' }}</span>
-      <span>{{ showForm ? 'Cerrar formulario' : 'Agregar Merma' }}</span>
-    </button>
-  </header>
+<ng-container *ngIf="vm$ | async as vm">
+  <div class="losses">
+    <header class="losses__header">
+      <div>
+        <h2>Gestión de mermas</h2>
+        <p>Registra las pérdidas de productos y controla su impacto en el inventario.</p>
+      </div>
+      <button type="button" class="losses__action" (click)="toggleForm()" [disabled]="!vm.availableProducts.length">
+        <span class="material-symbols-outlined">{{ showForm ? 'close' : 'add_circle' }}</span>
+        <span>{{ showForm ? 'Cerrar formulario' : 'Agregar Merma' }}</span>
+      </button>
+    </header>
 
-  <section class="losses__form" *ngIf="showForm">
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <section class="losses__form" *ngIf="showForm">
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="losses__fields">
         <div class="losses__field">
-          <label for="loss-product">Nombre del producto</label>
-          <input id="loss-product" type="text" formControlName="productName" placeholder="Ej. Semillas de quinoa">
-          <small *ngIf="form.controls.productName.invalid && (form.controls.productName.dirty || form.controls.productName.touched)">
-            Ingresa el nombre del producto (máx. 80 caracteres).
-          </small>
+            <label for="loss-product">Producto con stock</label>
+            <select id="loss-product" formControlName="productRef" [disabled]="!vm.availableProducts.length">
+              <option value="" disabled>Selecciona un producto</option>
+              <option *ngFor="let product of vm.availableProducts" [value]="product.ref">
+                {{ product.name }} · {{ product.stock | quantityFormat }} unidades · {{ product.description }}
+              </option>
+            </select>
+            <small *ngIf="form.controls.productRef.invalid && (form.controls.productRef.dirty || form.controls.productRef.touched)">
+              Selecciona un producto disponible en cosecha o inventario.
+            </small>
+            <small *ngIf="!vm.availableProducts.length">
+              No hay productos con stock para descontar. Registra nuevas cosechas o existencias.
+            </small>
+            <small *ngIf="vm.availableProducts.length && getProductOption(vm.availableProducts, form.controls.productRef.value) as selected">
+              {{ selected.description }} · Stock disponible: {{ selected.stock | quantityFormat }} unidades.
+            </small>
         </div>
         <div class="losses__field">
           <label for="loss-quantity">Cantidad perdida</label>
-          <input id="loss-quantity" type="text" formControlName="quantity" placeholder="Ej. 3">
-          <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
-            Ingresa una cantidad válida mayor a cero (máx. 2 decimales).
-          </small>
+            <input id="loss-quantity" type="number" min="1" step="1" formControlName="quantity" placeholder="Ej. 3">
+            <small *ngIf="form.controls.quantity.invalid && (form.controls.quantity.dirty || form.controls.quantity.touched)">
+              <ng-container *ngIf="form.controls.quantity.hasError('exceedStock'); else quantityHint">
+                La cantidad supera el stock disponible.
+              </ng-container>
+              <ng-template #quantityHint>Ingresa una cantidad válida mayor a cero.</ng-template>
+            </small>
         </div>
         <div class="losses__field">
           <label for="loss-date">Fecha</label>
@@ -57,15 +72,14 @@
           <span class="material-symbols-outlined">close</span>
           <span>Cancelar</span>
         </button>
-        <button type="submit" class="losses__button">
+          <button type="submit" class="losses__button" [disabled]="form.invalid || !vm.availableProducts.length">
           <span class="material-symbols-outlined">save</span>
           <span>Guardar merma</span>
         </button>
       </div>
-    </form>
-  </section>
+      </form>
+    </section>
 
-  <ng-container *ngIf="vm$ | async as vm">
     <section class="losses__insights" *ngIf="vm.distribution.length">
       <article class="losses__chart">
         <div class="losses__chart-graphic">
@@ -114,13 +128,13 @@
         </select>
       </div>
 
-      <article class="losses__empty" *ngIf="!vm.losses.length">
+      <article class="losses__empty" *ngIf="!vm.lossRows.length">
         <span class="material-symbols-outlined">inventory_2</span>
         <h3>No hay mermas registradas</h3>
         <p>Utiliza el botón "Agregar Merma" para capturar las pérdidas registradas en la cooperativa.</p>
       </article>
 
-      <div class="losses__table-wrapper" *ngIf="vm.losses.length">
+      <div class="losses__table-wrapper" *ngIf="vm.lossRows.length">
         <table class="losses__table">
           <thead>
             <tr>
@@ -133,21 +147,23 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let loss of vm.losses; trackBy: trackLoss">
+            <tr *ngFor="let row of vm.lossRows; trackBy: trackLoss">
               <td>
-                <strong>{{ loss.productName }}</strong>
+                <strong>{{ row.loss.productName }}</strong>
+                <small>{{ row.sourceLabel }}</small>
+                <small *ngIf="row.remainingStock !== null">Stock actualizado: {{ row.remainingStock | quantityFormat }} unidades</small>
               </td>
-              <td>{{ loss.quantity | quantityFormat }} unidades</td>
-              <td>{{ loss.reason }}</td>
+              <td>{{ row.loss.quantity | quantityFormat }} unidades</td>
+              <td>{{ row.loss.reason }}</td>
               <td>
-                <span>{{ loss.date | date:'mediumDate' }}</span>
+                <span>{{ row.loss.date | date:'mediumDate' }}</span>
               </td>
               <td>
-                <div>Registrado por: {{ userRoleLabels[loss.recordedBy] }}</div>
-                <div *ngIf="loss.recordedBy === 'socio' && loss.recordedByPartnerName">Nombre del socio: {{ loss.recordedByPartnerName }}</div>
+                <div>Registrado por: {{ userRoleLabels[row.loss.recordedBy] }}</div>
+                <div *ngIf="row.loss.recordedBy === 'socio' && row.loss.recordedByPartnerName">Nombre del socio: {{ row.loss.recordedByPartnerName }}</div>
               </td>
               <td class="losses__cell-actions">
-                <button type="button" (click)="remove(loss)">
+                <button type="button" (click)="remove(row.loss)">
                   <span class="material-symbols-outlined">delete</span>
                   <span>Eliminar</span>
                 </button>
@@ -157,10 +173,10 @@
         </table>
       </div>
 
-      <div class="losses__total" *ngIf="vm.losses.length">
+      <div class="losses__total" *ngIf="vm.lossRows.length">
         <span>Total de mermas registradas</span>
         <strong>{{ vm.totalQuantity | quantityFormat }} unidades</strong>
       </div>
     </section>
-  </ng-container>
-</div>
+  </div>
+</ng-container>

@@ -10,6 +10,7 @@ export interface Harvest {
   date: Date;
   recordedBy: UserRole;
   recordedByPartnerName?: string;
+  recordedByUser?: string | null;
   purchasePriceClp?: number;
   salePriceClp?: number;
 }

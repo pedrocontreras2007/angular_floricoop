@@ -6,6 +6,7 @@ import { DataService } from '../../core/services/data.service';
 import { Harvest, HarvestCategory } from '../../core/models/harvest.model';
 import { QuantityFormatPipe } from '../../shared/pipes/quantity-format.pipe';
 import { UserRole, USER_ROLE_LABELS, USER_ROLE_OPTIONS } from '../../core/models/user-role.model';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-harvest',
@@ -50,7 +51,11 @@ export class HarvestComponent {
   readonly userRoleOptions = USER_ROLE_OPTIONS;
   readonly userRoleLabels = USER_ROLE_LABELS;
 
-  constructor(private readonly fb: FormBuilder, private readonly data: DataService) {}
+  constructor(
+    private readonly fb: FormBuilder,
+    private readonly data: DataService,
+    private readonly auth: AuthService
+  ) {}
 
   submit(): void {
     if (this.form.invalid || this.submitting) {
@@ -77,6 +82,8 @@ export class HarvestComponent {
     const purchasePriceClp = this.parseCurrency(raw.purchasePriceClp);
     const salePriceClp = this.parseCurrency(raw.salePriceClp);
 
+    const recordedByUser = this.auth.email ?? undefined;
+
     this.data.addHarvest({
       crop: raw.crop.trim(),
       category: raw.category,
@@ -84,6 +91,7 @@ export class HarvestComponent {
       date: new Date(),
       recordedBy: raw.recordedBy,
       recordedByPartnerName,
+      recordedByUser,
       purchasePriceClp,
       salePriceClp
     });

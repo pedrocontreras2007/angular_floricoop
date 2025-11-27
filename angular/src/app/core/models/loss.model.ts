@@ -1,5 +1,7 @@
 import { UserRole } from './user-role.model';
 
+export type LossSource = 'inventory' | 'harvest';
+
 export interface Loss {
   readonly id: string;
   readonly productName: string;
@@ -8,6 +10,8 @@ export interface Loss {
   readonly date: Date;
   readonly recordedBy: UserRole;
   readonly recordedByPartnerName?: string;
+  readonly sourceType?: LossSource;
+  readonly sourceId?: string;
 }
 
 export interface LossInput {
@@ -17,4 +21,6 @@ export interface LossInput {
   readonly date: Date;
   readonly recordedBy: UserRole;
   readonly recordedByPartnerName?: string;
+  readonly sourceType?: LossSource;
+  readonly sourceId?: string;
 }

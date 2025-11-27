@@ -93,6 +93,7 @@
             <small *ngIf="harvest.purchasePriceClp">Compra: {{ harvest.purchasePriceClp | currency:'CLP':'symbol-narrow':'1.0-0' }}</small>
             <small *ngIf="harvest.salePriceClp">Venta: {{ harvest.salePriceClp | currency:'CLP':'symbol-narrow':'1.0-0' }}</small>
             <small>Registrado por: {{ userRoleLabels[harvest.recordedBy] }}</small>
+            <small *ngIf="harvest.recordedByUser">Usuario: {{ harvest.recordedByUser }}</small>
             <small *ngIf="harvest.recordedBy === 'socio' && harvest.recordedByPartnerName">Nombre del socio: {{ harvest.recordedByPartnerName }}</small>
           </div>
           <div class="history__meta">
@@ -117,6 +118,7 @@
                 <th>Cantidad</th>
                 <th>Compra</th>
                 <th>Venta</th>
+                <th>Usuario</th>
               </tr>
             </thead>
             <tbody>
@@ -130,6 +132,7 @@
                 <td>{{ harvest.quantity | quantityFormat }} unidades</td>
                 <td>{{ harvest.purchasePriceClp ? (harvest.purchasePriceClp | currency:'CLP':'symbol-narrow':'1.0-0') : '—' }}</td>
                 <td>{{ harvest.salePriceClp ? (harvest.salePriceClp | currency:'CLP':'symbol-narrow':'1.0-0') : '—' }}</td>
+                <td>{{ harvest.recordedByUser || '—' }}</td>
               </tr>
             </tbody>
           </table>

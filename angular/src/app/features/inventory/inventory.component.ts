@@ -6,6 +6,7 @@ import { DataService } from '../../core/services/data.service';
 import { InventoryCategory, InventoryItem } from '../../core/models/inventory-item.model';
 import { QuantityFormatPipe } from '../../shared/pipes/quantity-format.pipe';
 import { UserRole, USER_ROLE_LABELS, USER_ROLE_OPTIONS } from '../../core/models/user-role.model';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-inventory',
@@ -31,8 +32,7 @@ export class InventoryComponent {
 
   readonly form = this.fb.group({
     name: this.fb.nonNullable.control('', [Validators.required, Validators.maxLength(80)]),
-    quantity: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^[0-9]*[.,]?[0-9]{0,2}$/)]),
-    unit: this.fb.nonNullable.control('kg', [Validators.required, Validators.maxLength(12)]),
+    quantity: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^[0-9]*$/)]),
     category: this.fb.nonNullable.control<InventoryCategory>('planta'),
     recordedBy: this.fb.nonNullable.control<UserRole>(this.defaultRole),
     recordedByPartnerName: this.fb.control('')
@@ -48,7 +48,11 @@ export class InventoryComponent {
   readonly userRoleOptions = USER_ROLE_OPTIONS;
   readonly userRoleLabels = USER_ROLE_LABELS;
 
-  constructor(private readonly fb: FormBuilder, private readonly data: DataService) {}
+  constructor(
+    private readonly fb: FormBuilder,
+    private readonly data: DataService,
+    private readonly auth: AuthService
+  ) {}
 
   submit(): void {
     if (this.form.invalid) {
@@ -57,34 +61,33 @@ export class InventoryComponent {
     }
 
     const raw = this.form.getRawValue();
-    const parsed = parseFloat(raw.quantity.replace(',', '.'));
-    const unit = raw.unit.trim();
-    const normalizedUnit = unit.toLowerCase();
-    const isKilogram = normalizedUnit === 'kg';
+    const parsed = Number(raw.quantity);
 
     if (!Number.isFinite(parsed) || parsed < 0) {
       this.form.controls.quantity.setErrors({ invalid: true });
       return;
     }
 
-    const quantity = isKilogram ? Math.round(parsed * 100) / 100 : Math.round(parsed);
+    const quantity = Math.round(parsed);
     const recordedByPartnerName = raw.recordedBy === 'socio'
       ? raw.recordedByPartnerName?.trim() || undefined
       : undefined;
 
+    const recordedByUser = this.auth.email ?? undefined;
+
     this.data.addInventoryItem({
       name: raw.name.trim(),
       quantity,
-      unit,
+      unit: 'unidades',
       category: raw.category,
       recordedBy: raw.recordedBy,
-      recordedByPartnerName
+      recordedByPartnerName,
+      recordedByUser
     });
 
     this.form.reset({
       name: '',
       quantity: '',
-      unit: 'kg',
       category: 'planta',
       recordedBy: this.defaultRole,
       recordedByPartnerName: ''
@@ -92,21 +95,20 @@ export class InventoryComponent {
   }
 
   adjustQuantity(item: InventoryItem): void {
-    const normalizedUnit = item.unit.trim().toLowerCase();
-    const initialValue = normalizedUnit === 'kg' ? (Math.round(item.quantity * 100) / 100).toFixed(2) : Math.round(item.quantity).toString();
-    const input = window.prompt(`Nueva cantidad para ${item.name}`, initialValue);
+    const initialValue = Math.round(item.quantity).toString();
+    const input = window.prompt(`Nueva cantidad (unidades) para ${item.name}`, initialValue);
     if (input === null) {
       return;
     }
 
-    const normalized = input.trim().replace(',', '.');
-    const value = parseFloat(normalized);
+    const normalized = input.trim();
+    const value = Number(normalized);
     if (!Number.isFinite(value) || value < 0) {
       window.alert('Ingresa un número válido.');
       return;
     }
 
-    const sanitized = normalizedUnit === 'kg' ? Math.round(value * 100) / 100 : Math.round(value);
+    const sanitized = Math.round(value);
 
     const rolePrompt = `¿Quién registra el ajuste?
 Opciones: ${USER_ROLE_OPTIONS.map(option => option.value).join(', ')}`;
@@ -129,7 +131,8 @@ Opciones: ${USER_ROLE_OPTIONS.map(option => option.value).join(', ')}`;
       partnerName = partnerInput?.trim() || undefined;
     }
 
-    this.data.updateInventoryQuantity(item.id, sanitized, selectedRole, partnerName);
+    const recordedByUser = this.auth.email ?? undefined;
+    this.data.updateInventoryQuantity(item.id, sanitized, selectedRole, partnerName, recordedByUser);
   }
 
   trackById(_: number, item: InventoryItem): string {

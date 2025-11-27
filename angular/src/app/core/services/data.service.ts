@@ -1,10 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Harvest, HarvestInput } from '../models/harvest.model';
 import { InventoryItem, InventoryItemInput } from '../models/inventory-item.model';
 import { Reminder, ReminderInput } from '../models/reminder.model';
 import { Loss, LossInput } from '../models/loss.model';
+import { AuthService } from './auth.service';
 
 // Interfaz para manejar la respuesta de tu API (que devuelve { data: [], ... })
 interface ApiResponse<T> {
@@ -16,6 +17,7 @@ interface ApiResponse<T> {
 @Injectable({ providedIn: 'root' })
 export class DataService {
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
   // URL de tu backend (asegúrate que coincida con el puerto de tu index.js)
   private readonly API_URL = 'http://localhost:3000/api';
 
@@ -59,7 +61,11 @@ export class DataService {
       .subscribe({
         next: (res) => {
           // Convertimos los strings de fecha de la BD a objetos Date de JS
-          const data = res.data.map(item => ({ ...item, date: new Date(item.date) }));
+          const data = res.data.map(item => ({
+            ...item,
+            date: new Date(item.date),
+            recordedByUser: item.recordedByUser ?? null
+          }));
           this.harvestsSubject.next(data);
         },
         error: (err) => console.error('Error cargando cosechas:', err)
@@ -69,7 +75,13 @@ export class DataService {
   private fetchInventory() {
     this.http.get<ApiResponse<InventoryItem[]>>(`${this.API_URL}/inventory`)
       .subscribe({
-        next: (res) => this.inventorySubject.next(res.data),
+        next: (res) => this.inventorySubject.next(
+          res.data.map(item => ({
+            ...item,
+            unit: 'unidades',
+            recordedByUser: item.recordedByUser ?? null
+          }))
+        ),
         error: (err) => console.error('Error cargando inventario:', err)
       });
   }
@@ -78,7 +90,19 @@ export class DataService {
     this.http.get<ApiResponse<Loss[]>>(`${this.API_URL}/losses`)
       .subscribe({
         next: (res) => {
-          const data = res.data.map(item => ({ ...item, date: new Date(item.date) }));
+          const data = res.data.map(item => {
+            const normalizedQuantity = Number(item.quantity) || 0;
+            const sourceType = item.sourceType === 'inventory' || item.sourceType === 'harvest'
+              ? item.sourceType
+              : undefined;
+            return {
+              ...item,
+              date: new Date(item.date),
+              quantity: normalizedQuantity,
+              sourceType,
+              sourceId: sourceType ? item.sourceId : undefined
+            } as Loss;
+          });
           this.lossesSubject.next(data);
         },
         error: (err) => console.error('Error cargando pérdidas:', err)
@@ -88,8 +112,9 @@ export class DataService {
   // --- Métodos Públicos (POST/PUT/DELETE) ---
 
   addHarvest(input: HarvestInput): void {
-    // El backend genera el ID, así que enviamos los datos tal cual
-    this.http.post(`${this.API_URL}/harvests`, input).subscribe({
+    const recordedByUser = input.recordedByUser ?? this.auth.email ?? 'sistema@floricoop.cl';
+    const payload: HarvestInput = { ...input, recordedByUser };
+    this.http.post(`${this.API_URL}/harvests`, payload).subscribe({
       next: () => this.fetchHarvests(), // Recargamos la lista tras guardar
       error: (e) => console.error('Error guardando cosecha', e)
     });
@@ -103,22 +128,34 @@ export class DataService {
   }
 
   addInventoryItem(input: InventoryItemInput): void {
-    this.http.post(`${this.API_URL}/inventory`, input).subscribe({
+    const recordedByUser = input.recordedByUser ?? this.auth.email ?? 'sistema@floricoop.cl';
+    const payload: InventoryItemInput = { ...input, unit: 'unidades', recordedByUser };
+    this.http.post(`${this.API_URL}/inventory`, payload).subscribe({
       next: () => this.fetchInventory(),
       error: (e) => console.error('Error guardando item', e)
     });
   }
 
-  updateInventoryQuantity(id: string, quantity: number, recordedBy: string, recordedByPartnerName?: string): void {
-    // Buscamos el item actual para no perder los otros datos (nombre, unidad, etc)
+  updateInventoryQuantity(
+    id: string,
+    quantity: number,
+    recordedBy: string,
+    recordedByPartnerName?: string,
+    recordedByUser?: string | null
+  ): void {
+    // Buscamos el item actual para no perder otros datos (nombre, categoría, etc)
     const currentItem = this.inventorySubject.value.find(i => i.id === id);
     if (!currentItem) return;
+
+    const recordedByUserValue = recordedByUser ?? this.auth.email ?? currentItem.recordedByUser ?? null;
 
     const updateData = {
       ...currentItem,
       quantity,
       recordedBy,
-      recordedByPartnerName: recordedByPartnerName || ''
+      recordedByPartnerName: recordedByPartnerName || '',
+      unit: 'unidades',
+      recordedByUser: recordedByUserValue
     };
 
     this.http.put(`${this.API_URL}/inventory/${id}`, updateData).subscribe({
@@ -127,11 +164,32 @@ export class DataService {
     });
   }
 
-  addLoss(input: LossInput): void {
-    this.http.post(`${this.API_URL}/losses`, input).subscribe({
-      next: () => this.fetchLosses(),
-      error: (e) => console.error('Error reportando pérdida', e)
+  updateHarvestQuantity(id: string, quantity: number): void {
+    const currentHarvest = this.harvestsSubject.value.find(h => h.id === id);
+    if (!currentHarvest) {
+      return;
+    }
+
+    const recordedByUserValue = currentHarvest.recordedByUser ?? this.auth.email ?? null;
+
+    const updateData = {
+      ...currentHarvest,
+      quantity: Math.max(quantity, 0),
+      recordedByUser: recordedByUserValue
+    };
+
+    this.http.put(`${this.API_URL}/harvests/${id}`, updateData).subscribe({
+      next: () => this.fetchHarvests(),
+      error: (e) => console.error('Error actualizando cosecha', e)
     });
+  }
+
+  addLoss(input: LossInput): Observable<unknown> {
+    return this.http.post(`${this.API_URL}/losses`, input).pipe(
+      tap({
+        next: () => this.fetchLosses()
+      })
+    );
   }
 
   removeLoss(id: string): void {

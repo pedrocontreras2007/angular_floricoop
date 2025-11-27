@@ -11,15 +11,23 @@
         <div>
           <h3>Stock total</h3>
           <p>{{ vm.totalStock | quantityFormat }} unidades</p>
-          <small>Suma de todas las existencias registradas</small>
+          <small>Inventario + cosechas disponibles</small>
         </div>
       </article>
       <article class="metric-card info">
-        <span class="material-symbols-outlined">group_work</span>
+        <span class="material-symbols-outlined">warehouse</span>
         <div>
-          <h3>Ítems activos</h3>
-          <p>{{ vm.items.length }}</p>
-          <small>Productos con seguimiento de stock</small>
+          <h3>Inventario disponible</h3>
+          <p>{{ vm.inventoryStock | quantityFormat }} unidades</p>
+          <small>Sumatoria de todos los ítems registrados</small>
+        </div>
+      </article>
+      <article class="metric-card success">
+        <span class="material-symbols-outlined">local_florist</span>
+        <div>
+          <h3>Cosecha acumulada</h3>
+          <p>{{ vm.harvestSummary.totalQuantity | quantityFormat }} unidades</p>
+          <small>{{ vm.harvestSummary.totalHarvests }} registros de cosecha activos</small>
         </div>
       </article>
       <article class="metric-card success">
@@ -38,6 +46,57 @@
           <small>Productos que requieren reposición</small>
         </div>
       </article>
+    </section>
+
+    <section class="harvest-insights">
+      <div class="harvest-insights__header">
+        <h3>Indicadores de cosecha</h3>
+        <p>Seguimiento de unidades cosechadas y su distribución.</p>
+      </div>
+      <div class="harvest-insights__cards">
+        <article>
+          <span class="label">Promedio por registro</span>
+          <strong>{{ vm.harvestSummary.averageQuantity | quantityFormat }} unidades</strong>
+        </article>
+        <article>
+          <span class="label">Categorías activas</span>
+          <strong>{{ (vm.harvestSummary.byCategory | keyvalue).length }}</strong>
+        </article>
+        <article>
+          <span class="label">Últimas cosechas</span>
+          <strong>{{ vm.harvestSummary.recentHarvests.length }}</strong>
+        </article>
+      </div>
+
+      <div class="harvest-insights__body" *ngIf="vm.harvestSummary.totalHarvests; else emptyHarvest">
+        <div class="harvest-insights__categories" *ngIf="vm.harvestSummary.byCategory | keyvalue as harvestCategories">
+          <h4>Por categoría</h4>
+          <div class="chips">
+            <div class="chip" *ngFor="let entry of harvestCategories">
+              <span class="chip__label">{{ entry.key }}</span>
+              <span class="chip__value">{{ entry.value | quantityFormat }} unidades</span>
+            </div>
+          </div>
+        </div>
+        <div class="harvest-insights__recent" *ngIf="vm.harvestSummary.recentHarvests.length">
+          <h4>Cosechas recientes</h4>
+          <ul>
+            <li *ngFor="let harvest of vm.harvestSummary.recentHarvests">
+              <div>
+                <strong>{{ harvest.crop }}</strong>
+                <small>{{ harvest.date | date:'mediumDate' }}</small>
+              </div>
+              <span>{{ harvest.quantity | quantityFormat }} unidades</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <ng-template #emptyHarvest>
+        <article class="empty">
+          <span class="material-symbols-outlined">grass</span>
+          <p>Todavía no hay información de cosechas para graficar.</p>
+        </article>
+      </ng-template>
     </section>
 
     <section class="profit" *ngIf="vm.harvestProfit.entries.length">
