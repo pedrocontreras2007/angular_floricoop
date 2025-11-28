@@ -17,7 +17,7 @@ interface ApiResponse<T> {
 export class DataService {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
-  private readonly API_URL = 'http://localhost:3000/api';
+  private readonly API_URL = 'http://innovacode.cloud-app.cl/api';
   private static readonly REMINDERS_STORAGE_KEY = 'floricoop.reminders';
 
   private readonly harvestsSubject = new BehaviorSubject<Harvest[]>([]);
