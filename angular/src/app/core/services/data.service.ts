@@ -17,7 +17,7 @@ interface ApiResponse<T> {
 export class DataService {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
-  private readonly API_URL = 'http://innovacode.cloud-app.cl/api';
+  private readonly API_URL = this.resolveApiUrl();
   private static readonly REMINDERS_STORAGE_KEY = 'floricoop.reminders';
 
   private readonly harvestsSubject = new BehaviorSubject<Harvest[]>([]);
@@ -32,6 +32,20 @@ export class DataService {
 
   constructor() {
     this.refreshAllData();
+  }
+
+  private resolveApiUrl(): string {
+    const remoteUrl = 'http://45.236.128.68:7001/api';
+    const localUrl = 'http://localhost:3000/api';
+    if (typeof window === 'undefined') {
+      return remoteUrl;
+    }
+    const envUrl = (window as any)?.__floricoopApiUrl__ as string | undefined;
+    if (envUrl?.trim()) {
+      return envUrl.trim();
+    }
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    return isLocalHost ? localUrl : remoteUrl;
   }
 
   get harvestsSnapshot(): Harvest[] { return this.harvestsSubject.value; }
