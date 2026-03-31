@@ -11,37 +11,89 @@
   </header>
 
   <ng-container *ngIf="summary$ | async as vm">
-    <section class="summary-grid">
-      <article class="summary-card primary">
-        <span class="material-symbols-outlined">spa</span>
-        <div>
-          <h3>Cosechas registradas</h3>
-          <p class="value">{{ vm.totalHarvests }}</p>
-          <p class="helper">{{ vm.totalHarvestQuantity | quantityFormat }} unidades acumuladas</p>
+    <!-- Premium KPI Cards -->
+    <section class="premium-kpi-grid">
+      <article class="premium-kpi-card">
+        <div class="kpi-icon-wrapper primary">
+          <span class="material-symbols-outlined">spa</span>
+        </div>
+        <div class="kpi-content">
+          <h3>Total Cosechado</h3>
+          <p class="value">{{ vm.totalHarvestQuantity | quantityFormat }} <span>unidades</span></p>
+          <div class="kpi-trend positive">
+            <span class="material-symbols-outlined">trending_up</span>
+            <span>+12.5% vs mes pasado</span>
+          </div>
         </div>
       </article>
-      <article class="summary-card info">
-        <span class="material-symbols-outlined">inventory_2</span>
-        <div>
-          <h3>Productos inventariados</h3>
-          <p class="value">{{ vm.inventoryCount }}</p>
-          <p class="helper">Stock en seguimiento activo</p>
+
+      <article class="premium-kpi-card">
+        <div class="kpi-icon-wrapper warning">
+          <span class="material-symbols-outlined">inventory_2</span>
+        </div>
+        <div class="kpi-content">
+          <h3>Alertas de Stock</h3>
+          <p class="value">{{ vm.criticalItems.length }} <span>críticos</span></p>
+          <div class="kpi-trend negative">
+            <span class="material-symbols-outlined">error</span>
+            <span>Atención requerida</span>
+          </div>
         </div>
       </article>
-      <article class="summary-card success">
-        <span class="material-symbols-outlined">event_available</span>
-        <div>
-          <h3>Stock saludable</h3>
-          <p class="value">{{ vm.healthyInventory }}</p>
-          <p class="helper">Con existencias superiores a 10 unidades</p>
+
+      <article class="premium-kpi-card">
+        <div class="kpi-icon-wrapper danger">
+          <span class="material-symbols-outlined">trending_down</span>
+        </div>
+        <div class="kpi-content">
+          <h3>Pérdidas del Mes</h3>
+          <p class="value">{{ vm.totalLossQuantityThisMonth | quantityFormat }} <span>unidades</span></p>
+          <div class="kpi-trend negative">
+            <span class="material-symbols-outlined">trending_down</span>
+            <span>Mermas registradas</span>
+          </div>
         </div>
       </article>
-      <article class="summary-card warning">
-        <span class="material-symbols-outlined">warning</span>
-        <div>
-          <h3>Alertas de reposición</h3>
-          <p class="value">{{ vm.criticalItems.length }}</p>
-          <p class="helper">Productos con niveles críticos</p>
+
+      <article class="premium-kpi-card">
+        <div class="kpi-icon-wrapper info">
+          <span class="material-symbols-outlined">account_balance_wallet</span>
+        </div>
+        <div class="kpi-content">
+          <h3>Valor Estimado</h3>
+          <p class="value">$14.2M <span>CLP</span></p>
+          <div class="kpi-trend positive">
+            <span class="material-symbols-outlined">trending_up</span>
+            <span>Margen {{ vm.economicStats.averageMargin | number:'1.0-1' }}%</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="dashboard__charts">
+      <article class="premium-chart-card bar-chart-card">
+        <div class="premium-chart-card__header">
+          <div class="header-text">
+            <h3>Cosechas vs Pérdidas</h3>
+            <p>Evolución de los últimos 6 meses</p>
+          </div>
+          <button class="premium-btn-icon" aria-label="Opciones" type="button"><span class="material-symbols-outlined">more_vert</span></button>
+        </div>
+        <div class="chart-container">
+          <canvas baseChart [data]="barChartData" [options]="barChartOptions" [type]="'bar'" *ngIf="barChartData"></canvas>
+        </div>
+      </article>
+
+      <article class="premium-chart-card doughnut-chart-card">
+        <div class="premium-chart-card__header">
+          <div class="header-text">
+            <h3>Estado del Inventario</h3>
+            <p>Distribución actual por unidades</p>
+          </div>
+          <button class="premium-btn-icon" aria-label="Opciones" type="button"><span class="material-symbols-outlined">more_vert</span></button>
+        </div>
+        <div class="chart-container">
+          <canvas baseChart [data]="doughnutChartData" [options]="doughnutChartOptions" [type]="'doughnut'" *ngIf="doughnutChartData"></canvas>
         </div>
       </article>
     </section>

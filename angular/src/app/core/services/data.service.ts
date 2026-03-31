@@ -6,6 +6,7 @@ import { InventoryItem, InventoryItemInput } from '../models/inventory-item.mode
 import { Reminder, ReminderInput } from '../models/reminder.model';
 import { Loss, LossInput } from '../models/loss.model';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
 
 interface ApiResponse<T> {
   data: T;
@@ -17,7 +18,7 @@ interface ApiResponse<T> {
 export class DataService {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
-  private readonly API_URL = this.resolveApiUrl();
+  private readonly API_URL = environment.apiUrl;
   private static readonly REMINDERS_STORAGE_KEY = 'floricoop.reminders';
 
   private readonly harvestsSubject = new BehaviorSubject<Harvest[]>([]);
@@ -32,12 +33,6 @@ export class DataService {
 
   constructor() {
     this.refreshAllData();
-  }
-
-  private resolveApiUrl(): string {
-    const normalize = (url: string) => url.replace(/\/+$/, ''); // quita slash final
-    // Forzamos siempre la URL pública de producción
-    return normalize('https://innovacode.cloud-app.cl/api');
   }
 
   get harvestsSnapshot(): Harvest[] { return this.harvestsSubject.value; }

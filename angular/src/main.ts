@@ -6,9 +6,10 @@ import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es';
 import { AppComponent } from './app/app.component';
 import { appRoutes } from './app/app.routes';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 registerLocaleData(localeEs);
 
 bootstrapApplication(AppComponent, {
-  providers: [provideHttpClient(), provideRouter(appRoutes), { provide: LOCALE_ID, useValue: 'es-ES' }]
+  providers: [provideHttpClient(), provideRouter(appRoutes), { provide: LOCALE_ID, useValue: 'es-ES' }, provideCharts(withDefaultRegisterables())]
 }).catch(err => console.error(err));

@@ -1,17 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { BehaviorSubject, combineLatest, map } from 'rxjs';
+import { BehaviorSubject, combineLatest, map, Subject, takeUntil } from 'rxjs';
+import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, ChartOptions, ChartType, ChartData } from 'chart.js';
 import { DataService } from '../../core/services/data.service';
 import { Harvest } from '../../core/models/harvest.model';
 import { InventoryItem } from '../../core/models/inventory-item.model';
 import { Reminder } from '../../core/models/reminder.model';
+import { Loss } from '../../core/models/loss.model';
 import { QuantityFormatPipe } from '../../shared/pipes/quantity-format.pipe';
 
 interface DashboardSummary {
   readonly totalHarvests: number;
   readonly totalHarvestQuantity: number;
+  readonly totalLossQuantityThisMonth: number;
   readonly inventoryCount: number;
   readonly healthyInventory: number;
   readonly criticalItems: InventoryItem[];
@@ -52,11 +56,12 @@ interface CalendarViewModel {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, QuantityFormatPipe],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, QuantityFormatPipe, BaseChartDirective],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   private static readonly ACTIONS: DashboardAction[] = [
     {
       icon: 'compost',
@@ -93,6 +98,52 @@ export class DashboardComponent {
   readonly Math = Math;
   editingReminderId: string | null = null;
 
+  // Opciones del gráfico de barras (Cosechas vs Pérdidas)
+  public barChartOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'top' },
+      tooltip: {
+        enabled: true,
+        intersect: false,
+        mode: 'index',
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleFont: { size: 13, family: 'Inter' },
+        bodyFont: { size: 12, family: 'Inter' },
+        padding: 10,
+        cornerRadius: 8
+      }
+    },
+    animation: { duration: 1500, easing: 'easeOutQuart' },
+    scales: {
+      y: { beginAtZero: true, grid: { color: 'rgba(226, 232, 240, 0.6)' } },
+      x: { grid: { display: false } }
+    }
+  };
+  public barChartData: ChartData<'bar'> | undefined;
+
+  // Opciones del gráfico de anillo (Estado de Inventario)
+  public doughnutChartOptions: ChartOptions<'doughnut'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'right', labels: { usePointStyle: true, padding: 20 } },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        bodyFont: { size: 13, family: 'Inter' },
+        padding: 12,
+        cornerRadius: 8,
+        callbacks: {
+          label: (context) => ` ${context.label}: ${context.parsed} productos`
+        }
+      }
+    },
+    cutout: '70%',
+    animation: { animateScale: true, animateRotate: true, duration: 1000 }
+  };
+  public doughnutChartData: ChartData<'doughnut'> | undefined;
+
   private readonly currentMonthSubject = new BehaviorSubject<Date>(this.startOfMonth(new Date()));
   private readonly currentMonth$ = this.currentMonthSubject.asObservable();
 
@@ -107,8 +158,14 @@ export class DashboardComponent {
     map(([month, reminders]) => this.buildCalendar(month, reminders))
   );
 
-  readonly summary$ = combineLatest([this.data.harvests$, this.data.inventory$]).pipe(
-    map(([harvests, inventory]: [Harvest[], InventoryItem[]]) => {
+  readonly summary$ = combineLatest([this.data.harvests$, this.data.inventory$, this.data.losses$]).pipe(
+    map(([harvests, inventory, losses]: [Harvest[], InventoryItem[], Loss[]]) => {
+      const currentMonthIndex = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const totalLossQuantityThisMonth = losses
+        .filter(l => l.date.getMonth() === currentMonthIndex && l.date.getFullYear() === currentYear)
+        .reduce((sum, l) => sum + l.quantity, 0);
+
       const criticalItems = inventory
         .filter((item: InventoryItem) => item.quantity <= 10)
         .sort((a: InventoryItem, b: InventoryItem) => a.quantity - b.quantity);
@@ -170,6 +227,7 @@ export class DashboardComponent {
       return {
         totalHarvests: harvests.length,
         totalHarvestQuantity: harvests.reduce((sum: number, harvest: Harvest) => sum + harvest.quantity, 0),
+        totalLossQuantityThisMonth,
         inventoryCount: inventory.length,
         healthyInventory: inventory.filter((item: InventoryItem) => item.quantity > 10).length,
         criticalItems,
@@ -183,6 +241,92 @@ export class DashboardComponent {
   );
 
   constructor(private readonly data: DataService, private readonly fb: FormBuilder) {}
+
+  ngOnInit(): void {
+    combineLatest([this.data.harvests$, this.data.losses$, this.data.inventory$]).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(
+      ([harvests, losses, inventory]) => {
+        const last6Months = [];
+        const harvestsData = [];
+        const lossesData = [];
+        
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          const monthName = new Intl.DateTimeFormat('es-ES', { month: 'short' }).format(d);
+          last6Months.push(this.capitalize(monthName));
+          
+          const targetMonth = d.getMonth();
+          const targetYear = d.getFullYear();
+          
+          const hSum = harvests
+            .filter(h => h.date.getMonth() === targetMonth && h.date.getFullYear() === targetYear)
+            .reduce((sum, h) => sum + h.quantity, 0);
+            
+          const lSum = losses
+            .filter(l => l.date.getMonth() === targetMonth && l.date.getFullYear() === targetYear)
+            .reduce((sum, l) => sum + l.quantity, 0);
+            
+          harvestsData.push(hSum);
+          lossesData.push(lSum);
+        }
+
+        this.barChartData = {
+          labels: last6Months,
+          datasets: [
+            {
+              data: harvestsData,
+              label: 'Cosechas',
+              backgroundColor: 'rgba(46, 125, 50, 0.8)',
+              hoverBackgroundColor: 'rgba(46, 125, 50, 1)',
+              borderRadius: 6,
+              barPercentage: 0.6
+            },
+            {
+              data: lossesData,
+              label: 'Pérdidas',
+              backgroundColor: 'rgba(211, 47, 47, 0.8)',
+              hoverBackgroundColor: 'rgba(211, 47, 47, 1)',
+              borderRadius: 6,
+              barPercentage: 0.6
+            }
+          ]
+        };
+
+        const enStock = inventory.filter(i => i.quantity > 10).length;
+        const bajoStock = inventory.filter(i => i.quantity > 0 && i.quantity <= 10).length;
+        const agotado = inventory.filter(i => i.quantity === 0).length;
+
+        this.doughnutChartData = {
+          labels: ['En stock (>10)', 'Bajo stock (1-10)', 'Agotado (0)'],
+          datasets: [
+            {
+              data: [enStock, bajoStock, agotado],
+              backgroundColor: [
+                'rgba(46, 125, 50, 0.85)',
+                'rgba(255, 152, 0, 0.85)',
+                'rgba(211, 47, 47, 0.85)'
+              ],
+              hoverBackgroundColor: [
+                'rgba(46, 125, 50, 1)',
+                'rgba(255, 152, 0, 1)',
+                'rgba(211, 47, 47, 1)'
+              ],
+              borderWidth: 3,
+              borderColor: '#ffffff',
+              hoverOffset: 6
+            }
+          ]
+        };
+      }
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   trackInventory(_: number, item: InventoryItem): string {
     return item.id;
