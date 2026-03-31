@@ -35,17 +35,9 @@ export class DataService {
   }
 
   private resolveApiUrl(): string {
-    const remoteUrl = 'http://45.236.128.68:7001/api';
-    const localUrl = 'http://localhost:3000/api';
-    if (typeof window === 'undefined') {
-      return remoteUrl;
-    }
-    const envUrl = (window as any)?.__floricoopApiUrl__ as string | undefined;
-    if (envUrl?.trim()) {
-      return envUrl.trim();
-    }
-    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-    return isLocalHost ? localUrl : remoteUrl;
+    const normalize = (url: string) => url.replace(/\/+$/, ''); // quita slash final
+    // Forzamos siempre la URL pública de producción
+    return normalize('https://innovacode.cloud-app.cl/api');
   }
 
   get harvestsSnapshot(): Harvest[] { return this.harvestsSubject.value; }
@@ -62,7 +54,7 @@ export class DataService {
   // --- Funciones de carga (Privadas) ---
 
   private fetchHarvests() {
-    this.http.get<ApiResponse<Harvest[]>>(`${this.API_URL}/harvests`)
+    this.http.get<ApiResponse<Harvest[]>>(`${this.API_URL}harvests`)
       .subscribe({
         next: (res) => {
           const data = res.data.map(item => ({
@@ -77,7 +69,7 @@ export class DataService {
   }
 
   private fetchInventory() {
-    this.http.get<ApiResponse<InventoryItem[]>>(`${this.API_URL}/inventory`)
+    this.http.get<ApiResponse<InventoryItem[]>>(`${this.API_URL}inventory`)
       .subscribe({
         next: (res) => this.inventorySubject.next(
           res.data.map(item => ({
@@ -91,7 +83,7 @@ export class DataService {
   }
 
   private fetchLosses() {
-    this.http.get<ApiResponse<Loss[]>>(`${this.API_URL}/losses`)
+    this.http.get<ApiResponse<Loss[]>>(`${this.API_URL}losses`)
       .subscribe({
         next: (res) => {
           const data = res.data.map(item => ({
@@ -111,7 +103,7 @@ export class DataService {
     const recordedByUser = input.recordedByUser ?? this.auth.email ?? 'sistema@floricoop.cl';
     const payload: HarvestInput = { ...input, recordedByUser };
     
-    this.http.post(`${this.API_URL}/harvests`, payload).subscribe({
+    this.http.post(`${this.API_URL}harvests`, payload).subscribe({
       next: () => {
         // Al agregar cosecha, refrescamos historial E inventario (pues el backend ahora suma el stock)
         this.fetchHarvests();
@@ -122,7 +114,7 @@ export class DataService {
   }
 
   deleteHarvest(id: string): void {
-    this.http.delete(`${this.API_URL}/harvests/${id}`).subscribe({
+    this.http.delete(`${this.API_URL}harvests/${id}`).subscribe({
       next: () => {
         this.fetchHarvests();
         this.fetchInventory(); // Refrescar inventario por si se descontó al borrar
@@ -134,7 +126,7 @@ export class DataService {
   addInventoryItem(input: InventoryItemInput): void {
     const recordedByUser = input.recordedByUser ?? this.auth.email ?? 'sistema@floricoop.cl';
     const payload: InventoryItemInput = { ...input, unit: 'unidades', recordedByUser };
-    this.http.post(`${this.API_URL}/inventory`, payload).subscribe({
+    this.http.post(`${this.API_URL}inventory`, payload).subscribe({
       next: () => this.fetchInventory(),
       error: (e) => console.error('Error guardando item', e)
     });
@@ -155,7 +147,7 @@ export class DataService {
       recordedByUser: recordedByUserValue
     };
 
-    this.http.put(`${this.API_URL}/inventory/${id}`, updateData).subscribe({
+    this.http.put(`${this.API_URL}inventory/${id}`, updateData).subscribe({
       next: () => this.fetchInventory(),
       error: (e) => console.error('Error actualizando stock manual', e)
     });
@@ -163,7 +155,7 @@ export class DataService {
 
   // Método para agregar Mermas
   addLoss(input: LossInput): Observable<unknown> {
-    return this.http.post(`${this.API_URL}/losses`, input).pipe(
+    return this.http.post(`${this.API_URL}losses`, input).pipe(
       tap({
         next: () => {
           // Al crear merma, el backend resta el stock.
@@ -176,7 +168,7 @@ export class DataService {
   }
 
   removeLoss(id: string): void {
-    this.http.delete(`${this.API_URL}/losses/${id}`).subscribe({
+    this.http.delete(`${this.API_URL}losses/${id}`).subscribe({
       next: () => {
         this.fetchLosses();
         this.fetchInventory(); // Refrescar por si el backend devuelve el stock
@@ -234,7 +226,7 @@ export class DataService {
       date: harvest.date.toISOString()
     };
 
-    this.http.put(`${this.API_URL}/harvests/${id}`, payload).subscribe({
+    this.http.put(`${this.API_URL}harvests/${id}`, payload).subscribe({
       next: () => this.fetchHarvests(),
       error: (e) => console.error('Error actualizando cosecha', e)
     });
